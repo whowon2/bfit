@@ -38,8 +38,14 @@ Whether you’re a casual user or a health enthusiast, **BFit** makes it easy to
 
 ## Technologies
 
-- **Next.js 14** – React framework for server-rendered apps
+- **Next.js 15** – React framework for server-rendered apps
 - **TypeScript** – Strongly typed JavaScript
 - **ShadCN/UI** – Component library for fast UI development
 - **Recharts** – Interactive charting library for React
 - **Better Auth** – Authentication and session management
+- **Tailwind CSS** – Utility-first CSS framework
+- **Vercel** – Deployment and hosting platform
+- **Drizzle** – ORM for database management
+- **Postgres** – Relational database for storing user data
+- **Motion** – Animation library for React Native and web
+- **Biome** – Code formatting and linting tool
