@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BFit
 
-## Getting Started
+**BFit** is a modern web application designed to help users **track, visualize, and manage their fitness data**. With real-time charts, data import/export, and secure authentication, **bfit** empowers users to monitor their progress and gain insights into their health journey.
 
-First, run the development server:
+## Table of Contents
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Demo](#demo)
+- [Technologies](#technologies)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Folder Structure](#folder-structure)
+- [Contributing](#contributing)
+- [License](#license)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**BFit** aims to provide a **lightweight, user-friendly, and interactive dashboard** for individuals who want to monitor metrics like weight, weekly progress, and trends over time. It supports:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Secure user authentication with role-based access
+- Interactive and responsive charts for tracking metrics
+- Import and export of data in JSON format for portability
+- Modular, reusable UI components for a smooth experience
 
-## Learn More
+Whether you’re a casual user or a health enthusiast, **BFit** makes it easy to visualize your progress and stay motivated.
 
-To learn more about Next.js, take a look at the following resources:
+## Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **User Authentication:** Sign up, sign in, and manage sessions securely
+- **Role-Based Access Control (RBAC):** Different dashboards for different roles
+- **Interactive Charts:** Visualize weight and fitness trends over time using Recharts
+- **Data Import/Export:** Easily backup or migrate your fitness data
+- **Responsive UI:** Clean, mobile-friendly interface using ShadCN components
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Demo
 
-## Deploy on Vercel
+Provide a link to your deployed app or screenshots:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+![Dashboard Screenshot](link-to-screenshot.png)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Technologies
+
+- **Next.js 14** – React framework for server-rendered apps
+- **TypeScript** – Strongly typed JavaScript
+- **ShadCN/UI** – Component library for fast UI development
+- **Recharts** – Interactive charting library for React
+- **Better Auth** – Authentication and session management
