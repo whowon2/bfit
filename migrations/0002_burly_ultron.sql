@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "weight_unit" text DEFAULT 'kg' NOT NULL;
