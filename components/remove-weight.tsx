@@ -22,7 +22,7 @@ export function RemoveWeightButton({ weightId }: { weightId: number }) {
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger>
+      <AlertDialogTrigger asChild>
         <Button variant={"outline"}>
           <X size={12} />
         </Button>

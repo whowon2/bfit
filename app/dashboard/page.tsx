@@ -20,7 +20,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="container flex flex-col gap-6 p-8 items-center w-full">
-      <h1>History</h1>
       <WeightForm userId={session.user.id} />
       <div className="flex gap-4">
         <ImportWeightsButton session={session} />
