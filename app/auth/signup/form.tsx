@@ -1,10 +1,10 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
+import { useActionState } from "react";
 import { signup } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-import { useActionState } from "react";
 
 const initialState = {
   message: "",

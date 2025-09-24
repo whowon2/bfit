@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
-export async function signin(prevState: any, formData: FormData) {
+export async function signin(_prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -18,7 +18,7 @@ export async function signin(prevState: any, formData: FormData) {
   redirect("/dashboard");
 }
 
-export async function signup(prevState: any, formData: FormData) {
+export async function signup(_prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const name = formData.get("name") as string;

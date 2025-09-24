@@ -1,10 +1,10 @@
 import { LogOut } from "lucide-react";
+import { logout } from "@/actions/auth";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -16,7 +16,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "./ui/button";
-import { logout } from "@/actions/auth";
 
 export function LogoutButton() {
   async function handleLogout() {

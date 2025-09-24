@@ -1,11 +1,8 @@
-import Link from "next/link";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signin } from "@/actions/auth";
-import { auth } from "@/lib/auth";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 import { SigninForm } from "./form";
 
 export default async function SigninPage() {

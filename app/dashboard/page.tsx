@@ -1,12 +1,9 @@
-import { X } from "lucide-react";
 import { headers } from "next/headers";
 import { getWeightEntries } from "@/actions/weight";
 import WeightForm from "@/components/add-weight";
 import { ExportJsonButton } from "@/components/export-json";
 import { ImportWeightsButton } from "@/components/import-weights";
 import { Chart } from "@/components/progress-chart";
-import { RemoveWeightButton } from "@/components/remove-weight";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WeightList } from "@/components/weight-list";
 import { auth } from "@/lib/auth";
 

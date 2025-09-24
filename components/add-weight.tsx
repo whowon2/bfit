@@ -1,5 +1,8 @@
 "use client";
 
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import React from "react";
 import { addWeightEntry } from "@/actions/weight";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -7,11 +10,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import React from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 
 export default function WeightForm({ userId }: { userId: string }) {
   const [date, setDate] = React.useState<Date>();
