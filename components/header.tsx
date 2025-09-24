@@ -1,8 +1,7 @@
-import { LogOut } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { logout } from "@/actions/auth";
 import { auth } from "@/lib/auth";
+import { LogoutButton } from "./logout-button";
 import { Button } from "./ui/button";
 
 export default async function Header() {
@@ -12,16 +11,12 @@ export default async function Header() {
 
   return (
     <header className="container p-4 w-full flex justify-between items-center">
-      <h1>BFit</h1>
+      <Link href="/">
+        <h1 className="font-bold text-xl">BFit</h1>
+      </Link>
 
       {session?.user ? (
-        <div className="">
-          <form action={logout}>
-            <Button variant={"outline"}>
-              <LogOut />
-            </Button>
-          </form>
-        </div>
+        <LogoutButton />
       ) : (
         <Link href="/auth/signin">
           <Button>Login</Button>

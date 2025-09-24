@@ -14,7 +14,7 @@ export default function WeightForm({ userId }: { userId: string }) {
         await addWeightEntry(userId, value, date ? new Date(date) : new Date());
         revalidatePath("dashboard");
       }}
-      className="w-full flex flex-col items-center gap-2"
+      className="w-full flex flex-col items-center gap-2 max-w-sm"
     >
       <Input
         type="number"
