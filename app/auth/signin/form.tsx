@@ -3,6 +3,7 @@
 import { signin } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
 
 const initialState = {
@@ -10,7 +11,7 @@ const initialState = {
 };
 
 export function SigninForm() {
-  const [state, formAction] = useActionState(signin, initialState);
+  const [state, formAction, pending] = useActionState(signin, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
@@ -26,7 +27,7 @@ export function SigninForm() {
       )}
 
       <Button type="submit" className="w-full">
-        Log In
+        {pending ? <Loader2 className="animate-spin" /> : "Log In"}
       </Button>
     </form>
   );

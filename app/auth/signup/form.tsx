@@ -3,6 +3,7 @@
 import { signup } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
 
 const initialState = {
@@ -28,7 +29,7 @@ export function SignupForm() {
       )}
 
       <Button type="submit" className="w-full">
-        Create Account
+        {pending ? <Loader2 className="animate-spin" /> : "Sign Up"}
       </Button>
     </form>
   );
