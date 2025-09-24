@@ -89,7 +89,7 @@ export function Chart({ weights }: { weights: Weight[] }) {
         <CardTitle>Progress</CardTitle>
         <CardAction></CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="w-full">
         <ChartContainer config={chartConfig}>
           <LineChart
             accessibilityLayer

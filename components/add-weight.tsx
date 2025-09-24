@@ -14,7 +14,7 @@ export default function WeightForm({ userId }: { userId: string }) {
         await addWeightEntry(userId, value, date ? new Date(date) : new Date());
         revalidatePath("dashboard");
       }}
-      className="space-y-2 max-w-sm w-full"
+      className="w-full flex flex-col items-center gap-2"
     >
       <Input
         type="number"
@@ -22,13 +22,13 @@ export default function WeightForm({ userId }: { userId: string }) {
         step={0.01}
         placeholder="Enter weight"
         required
-        className="border rounded px-2 py-1"
+        className="border w-full rounded px-2 py-1"
       />
       <Input
         type="date"
         name="date"
         defaultValue={Date.now()}
-        className="border rounded px-2 py-1"
+        className="border rounded w-full px-2 py-1"
       />
       <Button type="submit" className="w-full">
         Add Entry

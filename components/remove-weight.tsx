@@ -1,8 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
 import { removeWeightEntry } from "@/actions/weight";
-import { Button } from "./ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,14 +12,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { X } from "lucide-react";
+import React from "react";
+import { Button } from "./ui/button";
 
 export function RemoveWeightButton({ weightId }: { weightId: number }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   async function handleRemove() {
+    setIsOpen(false);
     await removeWeightEntry(weightId);
   }
 
   return (
-    <AlertDialog>
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
         <Button variant={"outline"}>
           <X size={12} />
