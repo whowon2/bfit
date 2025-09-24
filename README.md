@@ -18,7 +18,7 @@
 
 **BFit** aims to provide a **lightweight, user-friendly, and interactive dashboard** for individuals who want to monitor metrics like weight, weekly progress, and trends over time. It supports:
 
-- Secure user authentication with role-based access
+- Secure user authentication
 - Interactive and responsive charts for tracking metrics
 - Import and export of data in JSON format for portability
 - Modular, reusable UI components for a smooth experience
@@ -28,16 +28,13 @@ Whether you’re a casual user or a health enthusiast, **BFit** makes it easy to
 ## Features
 
 - **User Authentication:** Sign up, sign in, and manage sessions securely
-- **Role-Based Access Control (RBAC):** Different dashboards for different roles
 - **Interactive Charts:** Visualize weight and fitness trends over time using Recharts
 - **Data Import/Export:** Easily backup or migrate your fitness data
 - **Responsive UI:** Clean, mobile-friendly interface using ShadCN components
 
 ## Demo
 
-Provide a link to your deployed app or screenshots:
-
-![Dashboard Screenshot](link-to-screenshot.png)
+<img width="1411" height="960" alt="image" src="https://github.com/user-attachments/assets/6e799bf0-8656-4a95-b4b4-77c421883081" />
 
 ## Technologies
 
