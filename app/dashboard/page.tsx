@@ -7,8 +7,8 @@ import { ImportWeightsButton } from "@/components/import-weights";
 import { Chart } from "@/components/progress-chart";
 import { RemoveWeightButton } from "@/components/remove-weight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { auth } from "@/lib/auth";
 import { WeightList } from "@/components/weight-list";
+import { auth } from "@/lib/auth";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({

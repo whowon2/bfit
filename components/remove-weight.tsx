@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+import React from "react";
 import { removeWeightEntry } from "@/actions/weight";
 import {
   AlertDialog,
@@ -12,8 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { X } from "lucide-react";
-import React from "react";
 import { Button } from "./ui/button";
 
 export function RemoveWeightButton({ weightId }: { weightId: number }) {

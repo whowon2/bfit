@@ -1,9 +1,9 @@
 "use client";
 
-import { Weight } from "@/db/schema";
+import { AnimatePresence, motion } from "motion/react";
+import type { Weight } from "@/db/schema";
 import { RemoveWeightButton } from "./remove-weight";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { AnimatePresence, motion } from "motion/react";
 
 export function WeightList({
   weights,
