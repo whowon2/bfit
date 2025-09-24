@@ -1,9 +1,14 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signup } from "@/actions/auth";
 import { auth } from "@/lib/auth";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SignupForm } from "./form";
 
-export default async function AuthPage() {
+export default async function SignupPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -13,39 +18,20 @@ export default async function AuthPage() {
   }
 
   return (
-    <div className="p-8">
-      <h1 className="font-bold">Auth Page</h1>
-      <p>Please log in to access the dashboard.</p>
+    <Card className="w-full max-w-sm mx-auto mt-20 p-4">
+      <CardHeader>
+        <CardTitle className="font-bold text-center">Sign Up</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <SignupForm />
 
-      <form action={signup}>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="Email"
-          className="mt-4 block border p-2"
-        />
-        <input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="Password"
-          className="mt-4 block border p-2"
-        />
-        <input
-          id="name"
-          name="name"
-          type="text"
-          placeholder="Name"
-          className="mt-4 block border p-2"
-        />
-        <button
-          type="submit"
-          className="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-        >
-          Log In
-        </button>
-      </form>
-    </div>
+        <p className="text-sm text-center mt-4">
+          Already have an account?{" "}
+          <Link href="/auth/signin" className="text-blue-500 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
   );
 }

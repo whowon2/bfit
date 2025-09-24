@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { signin, signup } from "@/actions/auth";
+import { signin } from "@/actions/auth";
 import { auth } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SigninForm } from "./form";
 
-export default async function AuthPage() {
+export default async function SigninPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -16,33 +18,18 @@ export default async function AuthPage() {
   }
 
   return (
-    <Card>
+    <Card className="w-full max-w-sm mx-auto mt-20 p-4">
       <CardHeader>
-        <CardTitle className="font-bold">Signin</CardTitle>
+        <CardTitle className="font-bold text-center">Sign In</CardTitle>
       </CardHeader>
       <CardContent>
-        <p>Please log in to access the dashboard.</p>
-
-        <form action={signin} className="flex flex-col gap-2">
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="Email"
-            className=""
-          />
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Password"
-            className=""
-          />
-
-          <Button type="submit" className="">
-            Log In
-          </Button>
-        </form>
+        <SigninForm />
+        <p className="text-sm text-center mt-4">
+          Don’t have an account?{" "}
+          <Link href="/auth/signup" className="text-blue-500 hover:underline">
+            Sign up
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );
