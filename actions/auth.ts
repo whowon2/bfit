@@ -15,6 +15,7 @@ export async function signin(prevState: any, formData: FormData) {
   } catch (error) {
     if (error instanceof Error) return { message: error.message };
   }
+  redirect("/dashboard");
 }
 
 export async function signup(prevState: any, formData: FormData) {
@@ -37,6 +38,8 @@ export async function signup(prevState: any, formData: FormData) {
   } catch (error) {
     if (error instanceof Error) return { message: error.message };
   }
+
+  redirect("/dashboard");
 }
 
 export const logout = async () => {

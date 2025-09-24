@@ -10,7 +10,7 @@ const initialState = {
 };
 
 export function SigninForm() {
-  const [state, formAction, pending] = useActionState(signin, initialState);
+  const [state, formAction] = useActionState(signin, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
