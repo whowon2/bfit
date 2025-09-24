@@ -12,8 +12,6 @@ export async function signin(prevState: any, formData: FormData) {
     await auth.api.signInEmail({
       body: { email, password },
     });
-
-    redirect("/dashboard");
   } catch (error) {
     if (error instanceof Error) return { message: error.message };
   }
@@ -36,8 +34,6 @@ export async function signup(prevState: any, formData: FormData) {
         password,
       },
     });
-
-    redirect("/dashboard");
   } catch (error) {
     if (error instanceof Error) return { message: error.message };
   }

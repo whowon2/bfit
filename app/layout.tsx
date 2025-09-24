@@ -26,10 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex w-full flex-col items-center justify-center`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex w-full flex-col items-center justify-between bg-background font-sans`}
       >
         <Header />
         {children}
+        <div>Made by Whowon</div>
       </body>
     </html>
   );
