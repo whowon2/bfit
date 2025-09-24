@@ -29,6 +29,12 @@ export async function addWeightEntry(
   revalidateTag("weights");
 }
 
+export async function removeWeightEntry(entryId: number) {
+  await db.delete(weight).where(and(eq(weight.id, entryId)));
+
+  revalidateTag("weights");
+}
+
 export async function importWeightEntries(
   weights: { value: string; data: Date; userId: string }[],
 ) {

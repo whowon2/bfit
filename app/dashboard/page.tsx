@@ -1,9 +1,11 @@
+import { X } from "lucide-react";
 import { headers } from "next/headers";
 import { getWeightEntries } from "@/actions/weight";
 import WeightForm from "@/components/add-weight";
 import { ExportJsonButton } from "@/components/export-json";
 import { ImportWeightsButton } from "@/components/import-weights";
 import { Chart } from "@/components/progress-chart";
+import { RemoveWeightButton } from "@/components/remove-weight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 
@@ -45,11 +47,15 @@ export default async function DashboardPage() {
                 {weights
                   .sort((a, b) => b.date.getTime() - a.date.getTime())
                   .map((w) => (
-                    <div key={w.id} className="flex gap-4">
+                    <div
+                      key={w.id}
+                      className="flex gap-4 items-center p-2 justify-between last:border-none border-b"
+                    >
                       <div>
                         {w.value} {unit}
                       </div>
                       <div>{w.date.toLocaleString()}</div>
+                      <RemoveWeightButton weightId={w.id} />
                     </div>
                   ))}
               </CardContent>
