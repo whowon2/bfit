@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { getWeightEntries } from "@/actions/weight";
 import WeightForm from "@/components/add-weight";
+import { ExportJsonButton } from "@/components/export-json";
+import { ImportWeightsButton } from "@/components/import-weights";
 import { Chart } from "@/components/progress-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
@@ -18,6 +20,10 @@ export default async function DashboardPage() {
     <div className="container flex flex-col gap-6 p-8 items-center w-full">
       <h1>History</h1>
       <WeightForm userId={session.user.id} />
+      <div className="flex gap-4">
+        <ImportWeightsButton session={session} />
+        <ExportJsonButton weights={weights} />
+      </div>
 
       <Card className="w-full">
         <CardHeader>

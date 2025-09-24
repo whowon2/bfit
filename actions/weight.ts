@@ -29,6 +29,13 @@ export async function addWeightEntry(
   revalidateTag("weights");
 }
 
+export async function importWeightEntries(
+  weights: { value: string; data: Date; userId: string }[],
+) {
+  await db.insert(weight).values(weights);
+  revalidateTag("weights");
+}
+
 // 🔹 Update an existing entry
 export async function updateWeightEntry(
   entryId: number,
