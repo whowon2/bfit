@@ -2,6 +2,7 @@
 
 import { importWeightEntries } from "@/actions/weight";
 import type { Session } from "@/lib/auth-client";
+import { convertLyftaWeights, isLyftaWeightExport } from "@/lib/lyfta";
 import { Button } from "./ui/button";
 
 export function ImportWeightsButton({ session }: { session: Session }) {
@@ -17,13 +18,14 @@ export function ImportWeightsButton({ session }: { session: Session }) {
 
         try {
           const data = JSON.parse(text);
-          console.log("Imported JSON:", data);
 
-          const weights = data.map((d: any) => ({
-            value: d.value,
-            date: new Date(d.date),
-            userId: session.user.id,
-          }));
+          const weights = isLyftaWeightExport(data)
+            ? convertLyftaWeights(data, session.user.id)
+            : data.map((d: any) => ({
+                value: d.value,
+                date: new Date(d.date),
+                userId: session.user.id,
+              }));
 
           await importWeightEntries(weights);
         } catch (error) {
