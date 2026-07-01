@@ -49,20 +49,20 @@ export async function addWeightEntry(
     date,
   });
 
-  revalidateTag("weights");
+  revalidateTag("weights", "max");
 }
 
 export async function removeWeightEntry(entryId: number) {
   await db.delete(weight).where(and(eq(weight.id, entryId)));
 
-  revalidateTag("weights");
+  revalidateTag("weights", "max");
 }
 
 export async function importWeightEntries(
   weights: { value: string; data: Date; userId: string }[],
 ) {
   await db.insert(weight).values(weights);
-  revalidateTag("weights");
+  revalidateTag("weights", "max");
 }
 
 // 🔹 Update an existing entry

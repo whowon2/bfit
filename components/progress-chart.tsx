@@ -1,7 +1,14 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  type XAxisTickContentProps,
+  YAxis,
+} from "recharts";
 import {
   Card,
   CardAction,
@@ -53,17 +60,7 @@ function movingAverage(weights: Weight[]) {
   });
 }
 
-const CustomizedAxisTick = ({
-  x,
-  y,
-  _stroke,
-  payload,
-}: {
-  x: number;
-  y: number;
-  _stroke: string;
-  payload: { value: string };
-}) => {
+const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
   return (
     <g transform={`translate(${x},${y})`}>
       <text

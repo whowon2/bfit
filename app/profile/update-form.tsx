@@ -1,9 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { useEffect } from "react";
+import { type Resolver, useForm } from "react-hook-form";
 import { z } from "zod";
+import { updateProfile } from "@/actions/weight";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
@@ -15,29 +20,24 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Profile } from "@/db/schema";
 import type { Session } from "@/lib/auth-client";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { useEffect } from "react";
-import { createProfile, updateProfile } from "@/actions/weight";
-import { Profile } from "@/db/schema";
 
 export const formSchema = z.object({
   birthDate: z.date(),
-  sex: z.enum(["male", "female"]),
+  sex: z.enum(["male", "female", "other"]),
   height: z.number().min(100).max(300),
   activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
   goal: z.enum(["cut", "bulk", "maintain"]),
@@ -54,16 +54,20 @@ export function UpdateProfileForm({
   profile: Profile;
 }) {
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<z.infer<typeof formSchema>>,
     defaultValues: {
-      birthDate: profile.birthDate,
-      sex: profile.sex,
-      height: profile.height,
-      activityLevel: profile.activityLevel,
-      goal: profile.goal,
-      targetRate: profile.targetRate,
-      maintenanceCalories: profile.maintenanceCalories,
-      currentCalories: profile.currentCalories,
+      birthDate: new Date(profile.birthDate),
+      sex: profile.sex ?? "male",
+      height: profile.height ? Number(profile.height) : 180,
+      activityLevel: profile.activityLevel ?? "moderate",
+      goal: profile.goal ?? "maintain",
+      targetRate: profile.targetRate ? Number(profile.targetRate) : 0.5,
+      maintenanceCalories: profile.maintenanceCalories
+        ? Number(profile.maintenanceCalories)
+        : 0,
+      currentCalories: profile.currentCalories
+        ? Number(profile.currentCalories)
+        : 0,
     },
   });
 

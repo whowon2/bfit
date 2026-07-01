@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getProfile, getWeightEntries } from "@/actions/weight";
 import WeightForm from "@/components/add-weight";
 import { ExportJsonButton } from "@/components/export-json";
@@ -13,7 +14,11 @@ export default async function DashboardPage() {
     headers: await headers(),
   });
 
-  const unit = session?.user?.weightUnit === "lbs" ? "lbs" : "kg";
+  if (!session) {
+    redirect("/auth/signin");
+  }
+
+  const unit = session.user.weightUnit === "lbs" ? "lbs" : "kg";
 
   const weights = await getWeightEntries(session.user.id);
 

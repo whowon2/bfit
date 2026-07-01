@@ -1,9 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { useEffect } from "react";
+import { type Resolver, useForm } from "react-hook-form";
 import { z } from "zod";
+import { createProfile } from "@/actions/weight";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
@@ -15,6 +20,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,17 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Session } from "@/lib/auth-client";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { useEffect } from "react";
-import { createProfile } from "@/actions/weight";
 
 export const formSchema = z.object({
   birthDate: z.date(),
@@ -47,7 +47,7 @@ export const formSchema = z.object({
 
 export function CreateProfileForm({ session }: { session: Session }) {
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<z.infer<typeof formSchema>>,
     defaultValues: {
       birthDate: new Date("02/02/2002"),
       sex: "male",
@@ -138,7 +138,6 @@ export function CreateProfileForm({ session }: { session: Session }) {
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
