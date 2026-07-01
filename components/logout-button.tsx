@@ -28,7 +28,7 @@ export function LogoutButton() {
       <Tooltip>
         <TooltipTrigger asChild>
           <AlertDialogTrigger asChild>
-            <Button type="button" variant={"outline"}>
+            <Button type="button" variant={"ghost"}>
               <LogOut />
             </Button>
           </AlertDialogTrigger>

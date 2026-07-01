@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   decimal,
   pgTable,
   serial,
@@ -83,4 +84,51 @@ export const weight = pgTable("weight", {
     .notNull(),
 });
 
+export const userProfile = pgTable("user_profile", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  birthDate: date("birth_date").notNull(),
+  sex: text("sex").$type<"male" | "female" | "other">(),
+  height: decimal("height", { precision: 5, scale: 2 }), // cm
+  activityLevel: text("activity_level").$type<
+    "sedentary" | "light" | "moderate" | "high"
+  >(),
+  goal: text("goal").$type<"cut" | "bulk" | "maintain">().default("maintain"),
+  targetRate: decimal("target_rate", { precision: 4, scale: 2 }).default("0.5"), // kg/week
+  maintenanceCalories: decimal("maintenance_calories", {
+    precision: 6,
+    scale: 0,
+  }),
+  currentCalories: decimal("current_calories", { precision: 6, scale: 0 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const calorieLog = pgTable("calorie_log", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+
+  date: timestamp("date").defaultNow().notNull(),
+  targetCalories: decimal("target_calories", {
+    precision: 6,
+    scale: 0,
+  }).notNull(),
+  actualCalories: decimal("actual_calories", { precision: 6, scale: 0 }), // optional
+  phase: text("phase").$type<"cut" | "bulk" | "maintain">().default("maintain"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 export type Weight = typeof weight.$inferSelect;
+export type Profile = typeof userProfile.$inferSelect;

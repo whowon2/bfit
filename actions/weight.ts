@@ -3,7 +3,30 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/db/drizzle";
-import { weight } from "@/db/schema";
+import { userProfile, weight } from "@/db/schema";
+
+export async function getProfile(userId: string) {
+  const profile = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId));
+
+  return profile[0];
+}
+
+export async function createProfile(userId: string, data: any) {
+  return await db.insert(userProfile).values({
+    userId: userId,
+    ...data,
+  });
+}
+
+export async function updateProfile(userId: string, data: any) {
+  return await db
+    .update(userProfile)
+    .set(data)
+    .where(eq(userProfile.userId, userId));
+}
 
 // 🔹 Get all weight entries for a user
 export async function getWeightEntries(userId: string) {

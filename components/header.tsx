@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { LogoutButton } from "./logout-button";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 
 export default async function Header() {
@@ -16,7 +17,15 @@ export default async function Header() {
       </Link>
 
       {session?.user ? (
-        <LogoutButton />
+        <div className="flex gap-2">
+          <Link href="/profile">
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+          </Link>
+          <LogoutButton />
+        </div>
       ) : (
         <Link href="/auth/signin">
           <Button>Login</Button>
