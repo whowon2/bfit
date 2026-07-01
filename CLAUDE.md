@@ -4,18 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-BFit is a Next.js 15 (App Router) fitness tracker: weight logging, progress charts, JSON import/export, email/password auth. Uses TypeScript, Drizzle ORM + Postgres, Better Auth, Tailwind v4, ShadCN/UI (Radix), Recharts, Biome.
+BFit is a Next.js 16 (App Router) fitness tracker: weight logging, progress charts, JSON import/export, email/password auth. Uses TypeScript, Drizzle ORM + Postgres, Better Auth, Tailwind v4, ShadCN/UI (Radix), Recharts, Biome. Package manager is bun (`bun.lock`).
 
 ## Commands
 
-- `pnpm dev` — start dev server (Turbopack)
-- `pnpm build` — production build (Turbopack)
-- `pnpm start` — run production build
-- `pnpm lint` — Biome check (lint + import organization)
-- `pnpm format` — Biome format, writes in place
-- `drizzle-kit generate` — generate a new migration from `db/schema.ts` changes
-- `drizzle-kit migrate` — apply migrations (also runs automatically via `postinstall`)
-- `drizzle-kit studio` — browse the DB
+- `bun dev` — start dev server (Turbopack)
+- `bun run build` — production build (Turbopack)
+- `bun start` — run production build
+- `bun run lint` — Biome check (lint + import organization)
+- `bun run format` — Biome format, writes in place
+- `bunx drizzle-kit generate` — generate a new migration from `db/schema.ts` changes
+- `bunx drizzle-kit migrate` — apply migrations (also runs automatically via `postinstall`)
+- `bunx drizzle-kit studio` — browse the DB
 
 No test suite is configured in this repo.
 
@@ -30,7 +30,7 @@ Requires `DATABASE_URL` in `.env` (loaded via `dotenv` in `db/drizzle.ts` and `d
 - `lib/auth-client.ts` — client-side auth client (`better-auth/react`), exports the `Session` type inferred from the client.
 - `app/api/auth/[...all]/route.ts` — catch-all handler wiring Better Auth into Next's route handlers via `toNextJsHandler`.
 - `actions/auth.ts` — server actions (`signin`, `signup`, `logout`) called from form components (see `app/auth/signin/form.tsx`, `app/auth/signup/form.tsx`); these use `auth.api.signInEmail` / `signUpEmail` / `signOut` and `redirect()` on success.
-- `middleware.ts` — optimistic redirect to `/auth/signin` for `/dashboard` based on the presence of a session cookie only (explicitly NOT a real auth check — real checks happen per-page via `auth.api.getSession()`).
+- `proxy.ts` — optimistic redirect to `/auth/signin` for `/dashboard` based on the presence of a session cookie only (explicitly NOT a real auth check — real checks happen per-page via `auth.api.getSession()`). Next 16 renamed the `middleware.ts` convention to `proxy.ts` (export named `proxy`, same behavior).
 
 **Database schema** (`db/schema.ts`): Better Auth's required tables (`user`, `session`, `account`, `verification`) sit alongside app tables `weight`, `userProfile`, and `calorieLog`, all foreign-keyed to `user.id` with `onDelete: "cascade"`. `weight` and other numeric fields use Drizzle `decimal` (returned as strings — callers `.toString()` values before insert and parse on read). `userProfile.goal`/`calorieLog.phase` use a shared `"cut" | "bulk" | "maintain"` union typed via `$type<>()`.
 
