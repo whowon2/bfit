@@ -50,8 +50,13 @@ export function ImportWeightsButton({ session }: { session: Session }) {
   }
 
   return (
-    <div className="relative">
-      <Button variant={"outline"} onClick={handleImport} disabled={isPending}>
+    <div className="relative flex-1">
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={handleImport}
+        disabled={isPending}
+      >
         <Upload className="h-4 w-4" />
         {isPending ? "Importing..." : "Import JSON"}
       </Button>

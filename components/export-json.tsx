@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import type { Weight } from "@/db/schema";
 import { Button } from "./ui/button";
 
@@ -20,5 +21,10 @@ export function ExportJsonButton({ weights }: { weights: Weight[] }) {
     URL.revokeObjectURL(url);
   }
 
-  return <Button onClick={handleExport}>Export JSON</Button>;
+  return (
+    <Button variant="outline" className="flex-1" onClick={handleExport}>
+      <Download className="h-4 w-4" />
+      Export JSON
+    </Button>
+  );
 }

@@ -4,9 +4,13 @@ import { format } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import WeightForm from "@/components/add-weight";
 import type { Weight } from "@/db/schema";
+import type { Session } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { EditWeightButton } from "./edit-weight";
+import { ExportJsonButton } from "./export-json";
+import { ImportWeightsButton } from "./import-weights";
 import { RemoveWeightButton } from "./remove-weight";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
@@ -14,10 +18,12 @@ export function WeightList({
   weights,
   unit,
   userId,
+  session,
 }: {
   weights: Weight[];
   unit: string;
   userId: string;
+  session: Session;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -81,6 +87,11 @@ export function WeightList({
       </CardHeader>
       {!collapsed && (
         <CardContent className="flex-1 min-h-0 overflow-auto px-2">
+          <WeightForm userId={userId} />
+          <div className="flex w-full max-w-sm mx-auto items-center gap-2 pb-3">
+            <ImportWeightsButton session={session} />
+            <ExportJsonButton weights={weights} />
+          </div>
           <AnimatePresence initial={false}>
             {sorted.map((w, i) => {
               const month = format(w.date, "MMMM yyyy");
