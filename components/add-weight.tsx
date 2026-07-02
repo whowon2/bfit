@@ -2,7 +2,8 @@
 
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import React from "react";
+import { useRouter } from "next/navigation";
+import React, { useRef, useTransition } from "react";
 import { addWeightEntry } from "@/actions/weight";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -15,12 +16,22 @@ import { Input } from "./ui/input";
 
 export default function WeightForm({ userId }: { userId: string }) {
   const [date, setDate] = React.useState<Date>();
+  const [isPending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   return (
     <form
-      action={async (formData) => {
+      ref={formRef}
+      action={(formData) => {
         const value = Number(formData.get("value"));
-        await addWeightEntry(userId, value, date ? new Date(date) : new Date());
+        const entryDate = date ? new Date(date) : new Date();
+        startTransition(async () => {
+          await addWeightEntry(userId, value, entryDate);
+          formRef.current?.reset();
+          setDate(undefined);
+          router.refresh();
+        });
       }}
       className="w-full flex flex-col items-center gap-2 max-w-sm"
     >
@@ -47,8 +58,8 @@ export default function WeightForm({ userId }: { userId: string }) {
           <Calendar mode="single" selected={date} onSelect={setDate} />
         </PopoverContent>
       </Popover>
-      <Button type="submit" className="w-full">
-        Add Entry
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? "Adding..." : "Add Entry"}
       </Button>
     </form>
   );

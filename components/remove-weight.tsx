@@ -1,7 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import React from "react";
+import { useRouter } from "next/navigation";
+import React, { useTransition } from "react";
 import { removeWeightEntry } from "@/actions/weight";
 import {
   AlertDialog,
@@ -18,16 +19,21 @@ import { Button } from "./ui/button";
 
 export function RemoveWeightButton({ weightId }: { weightId: number }) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  async function handleRemove() {
+  function handleRemove() {
     setIsOpen(false);
-    await removeWeightEntry(weightId);
+    startTransition(async () => {
+      await removeWeightEntry(weightId);
+      router.refresh();
+    });
   }
 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={"outline"}>
+        <Button variant={"outline"} disabled={isPending}>
           <X size={12} />
         </Button>
       </AlertDialogTrigger>

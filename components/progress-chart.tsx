@@ -1,6 +1,8 @@
 "use client";
 
+import { format, sub, subDays } from "date-fns";
 import { TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -9,6 +11,7 @@ import {
   type XAxisTickContentProps,
   YAxis,
 } from "recharts";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -35,27 +38,67 @@ const chartConfig = {
   monthly: { label: "Monthly", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
-function movingAverage(weights: Weight[]) {
-  // sort by date ascending
+const AVERAGES = ["daily", "weekly", "monthly"] as const;
+type Average = (typeof AVERAGES)[number];
+
+const WINDOW_PRESETS = ["1M", "3M", "6M", "1Y", "All"] as const;
+type WindowPreset = (typeof WINDOW_PRESETS)[number];
+
+const WINDOW_MONTHS: Record<Exclude<WindowPreset, "All">, number> = {
+  "1M": 1,
+  "3M": 3,
+  "6M": 6,
+  "1Y": 12,
+};
+
+interface ChartPoint {
+  date: number; // timestamp, so the axis can space points by real elapsed time
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
+// One point per actual log entry, positioned on a real time scale (not a
+// category axis) — a week without a log just stretches that segment of the
+// line horizontally instead of connecting distant entries as if adjacent.
+function buildChartData(weights: Weight[]): ChartPoint[] {
+  if (weights.length === 0) return [];
+
   const sorted = [...weights].sort(
     (a, b) => a.date.getTime() - b.date.getTime(),
   );
 
-  return sorted.map((w, i, arr) => {
-    // get the last `days` values including current
-    const start = Math.max(0, i - 7 + 1);
-    const start30 = Math.max(0, i - 30 + 1);
-    const slice = arr.slice(start, i + 1);
-    const slice30 = arr.slice(start30, i + 1);
-    const weekly = slice.reduce((sum, x) => sum + +x.value, 0) / slice.length;
-    const monthly =
-      slice30.reduce((sum, x) => sum + +x.value, 0) / slice30.length;
+  // Trailing averages over the real last 7/30 days (not entry count), via a
+  // two-pointer sliding window — O(n). Computed over the full history so a
+  // later time-window filter doesn't skew the average at the window's edge.
+  let weekLo = 0;
+  let monthLo = 0;
+  let weekSum = 0;
+  let monthSum = 0;
+
+  return sorted.map((w, i) => {
+    const date = w.date;
+    const weekStart = subDays(date, 6);
+    const monthStart = subDays(date, 29);
+
+    weekSum += Number(w.value);
+    monthSum += Number(w.value);
+    while (weekLo < i && sorted[weekLo].date < weekStart) {
+      weekSum -= Number(sorted[weekLo].value);
+      weekLo++;
+    }
+    while (monthLo < i && sorted[monthLo].date < monthStart) {
+      monthSum -= Number(sorted[monthLo].value);
+      monthLo++;
+    }
 
     return {
-      date: w.date.toISOString().slice(2, 10),
-      daily: parseFloat(w.value),
-      weekly: weekly,
-      monthly: monthly,
+      date: date.getTime(),
+      daily: Number(w.value),
+      // Round off float drift from the running +=/-= sum (e.g. 89.99999999997
+      // instead of 90) — weight values only ever have 2 decimal places anyway.
+      weekly: Math.round((weekSum / (i - weekLo + 1)) * 100) / 100,
+      monthly: Math.round((monthSum / (i - monthLo + 1)) * 100) / 100,
     };
   });
 }
@@ -71,26 +114,75 @@ const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
         fill="#666"
         transform="rotate(-55)"
       >
-        {payload.value}
+        {format(new Date(Number(payload.value)), "yy-MM-dd")}
       </text>
     </g>
   );
 };
 
 export function Chart({ weights }: { weights: Weight[] }) {
-  const chartData = movingAverage(weights);
+  const [windowPreset, setWindowPreset] = useState<WindowPreset>("All");
+  const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
+    new Set(AVERAGES),
+  );
+
+  const chartData = useMemo(() => buildChartData(weights), [weights]);
+
+  const visibleData = useMemo(() => {
+    if (windowPreset === "All" || chartData.length === 0) return chartData;
+    const last = chartData[chartData.length - 1].date;
+    const cutoff = sub(new Date(last), {
+      months: WINDOW_MONTHS[windowPreset],
+    }).getTime();
+    return chartData.filter((p) => p.date >= cutoff);
+  }, [chartData, windowPreset]);
+
+  function toggleAverage(avg: Average) {
+    setVisibleAvgs((prev) => {
+      const next = new Set(prev);
+      if (next.has(avg)) {
+        next.delete(avg);
+      } else {
+        next.add(avg);
+      }
+      return next;
+    });
+  }
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Progress</CardTitle>
-        <CardAction></CardAction>
+        <CardAction className="flex gap-1">
+          {AVERAGES.map((avg) => (
+            <Button
+              key={avg}
+              size="sm"
+              variant={visibleAvgs.has(avg) ? "default" : "outline"}
+              onClick={() => toggleAverage(avg)}
+            >
+              {chartConfig[avg].label}
+            </Button>
+          ))}
+        </CardAction>
       </CardHeader>
       <CardContent className="w-full">
+        <div className="flex gap-1 pb-4">
+          {WINDOW_PRESETS.map((preset) => (
+            <Button
+              key={preset}
+              size="sm"
+              variant={windowPreset === preset ? "default" : "outline"}
+              onClick={() => setWindowPreset(preset)}
+            >
+              {preset}
+            </Button>
+          ))}
+        </div>
         <ChartContainer config={chartConfig}>
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={visibleData}
             margin={{
               left: 12,
               right: 12,
@@ -99,11 +191,13 @@ export function Chart({ weights }: { weights: Weight[] }) {
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              scale="time"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
               height={100}
-              tickFormatter={(value) => value.slice(0, 3)}
               angle={-80}
               tick={CustomizedAxisTick}
             />
@@ -114,31 +208,43 @@ export function Chart({ weights }: { weights: Weight[] }) {
               domain={["dataMin", "dataMax"]} // 🔑 dynamic range
               tickCount={10}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Line
-              dataKey="daily"
-              type="monotone"
-              stroke="var(--color-daily)"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              connectNulls
+            <ChartTooltip
+              cursor={false}
+              labelFormatter={(_value, payload) => {
+                const ts = payload?.[0]?.payload?.date;
+                return typeof ts === "number"
+                  ? format(new Date(ts), "PPP")
+                  : "";
+              }}
+              content={<ChartTooltipContent />}
             />
-            <Line
-              dataKey="weekly"
-              type="monotone"
-              stroke="var(--color-weekly)"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              connectNulls
-            />{" "}
-            <Line
-              dataKey="monthly"
-              type="monotone"
-              stroke="var(--color-monthly)"
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              connectNulls
-            />
+            {visibleAvgs.has("daily") && (
+              <Line
+                dataKey="daily"
+                type="monotone"
+                stroke="var(--color-daily)"
+                strokeWidth={2}
+                dot={{ r: 2 }}
+              />
+            )}
+            {visibleAvgs.has("weekly") && (
+              <Line
+                dataKey="weekly"
+                type="monotone"
+                stroke="var(--color-weekly)"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
+            {visibleAvgs.has("monthly") && (
+              <Line
+                dataKey="monthly"
+                type="monotone"
+                stroke="var(--color-monthly)"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
             <ChartLegend content={<ChartLegendContent />} />
           </LineChart>
         </ChartContainer>

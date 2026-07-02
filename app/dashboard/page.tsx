@@ -37,9 +37,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch">
-        <Chart
-          weights={weights.sort((a, b) => a.date.getTime() - b.date.getTime())}
-        />
+        <Chart weights={weights} />
 
         <WeightList weights={weights} unit={unit} />
       </div>
