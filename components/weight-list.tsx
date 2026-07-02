@@ -17,11 +17,11 @@ export function WeightList({
   userId: string;
 }) {
   return (
-    <Card className="w-full lg:max-w-md">
+    <Card className="w-full lg:max-w-md h-full">
       <CardHeader>
         <CardTitle>Weights</CardTitle>
       </CardHeader>
-      <CardContent className="max-h-150 overflow-auto px-2">
+      <CardContent className="flex-1 min-h-0 overflow-auto px-2">
         <AnimatePresence initial={false}>
           {weights
             .sort((a, b) => b.date.getTime() - a.date.getTime())
