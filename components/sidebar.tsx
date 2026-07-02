@@ -12,8 +12,8 @@ export default async function Sidebar() {
   });
 
   return (
-    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col items-center justify-between border-border border-r py-4">
-      <div className="flex flex-col items-center gap-4">
+    <aside className="sticky top-0 flex h-screen w-12 md:w-16 shrink-0 flex-col items-center justify-between border-border border-r py-2 md:py-4">
+      <div className="flex flex-col items-center gap-2 md:gap-4">
         <Tooltip>
           <TooltipTrigger asChild>
             <Link href="/">

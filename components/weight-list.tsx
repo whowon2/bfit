@@ -62,7 +62,7 @@ export function WeightList({
   return (
     <Card
       className={cn(
-        "h-full transition-[width,max-width] duration-200 overflow-hidden",
+        "h-[500px] lg:h-full transition-[width,max-width] duration-200 overflow-hidden",
         collapsed ? "w-14 lg:max-w-14" : "w-full lg:max-w-xs",
       )}
     >
