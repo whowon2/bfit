@@ -33,8 +33,8 @@ export function RemoveWeightButton({ weightId }: { weightId: number }) {
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={"outline"} disabled={isPending}>
-          <X size={12} />
+        <Button variant="ghost" size="icon" disabled={isPending}>
+          <X size={14} />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
