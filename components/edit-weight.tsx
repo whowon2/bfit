@@ -36,6 +36,7 @@ export function EditWeightButton({
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(weight.value);
   const [date, setDate] = useState<Date>(weight.date);
+  const [time, setTime] = useState<string>(format(weight.date, "HH:mm"));
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -43,8 +44,14 @@ export function EditWeightButton({
     const newValue = Number(value);
     if (Number.isNaN(newValue)) return;
 
+    const entryDate = new Date(date);
+    if (time) {
+      const [hours, minutes] = time.split(":").map(Number);
+      entryDate.setHours(hours, minutes, 0, 0);
+    }
+
     startTransition(async () => {
-      await updateWeightEntry(weight.id, userId, newValue, date);
+      await updateWeightEntry(weight.id, userId, newValue, entryDate);
       router.refresh();
       setOpen(false);
     });
@@ -53,11 +60,13 @@ export function EditWeightButton({
   return (
     <Dialog
       open={open}
+      modal={false}
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
           setValue(weight.value);
           setDate(weight.date);
+          setTime(format(weight.date, "HH:mm"));
         }
       }}
     >
@@ -81,27 +90,36 @@ export function EditWeightButton({
             />
             <span className="text-muted-foreground text-sm">{unit}</span>
           </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !date && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon />
-                {date ? format(date, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => d && setDate(d)}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "flex-1 justify-start text-left font-normal",
+                    !date && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  captionLayout="dropdown"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-32"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
