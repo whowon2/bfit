@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   return (
     <div className="container flex flex-col gap-6 p-2 items-center w-full">
       <WeightForm userId={session.user.id} />
-      <div className="flex gap-4">
+      <div className="flex items-center gap-4">
         <ImportWeightsButton session={session} />
         <ExportJsonButton weights={weights} />
       </div>

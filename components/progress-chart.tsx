@@ -1,7 +1,7 @@
 "use client";
 
 import { format, sub, subDays } from "date-fns";
-import { TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -137,6 +137,15 @@ export function Chart({ weights }: { weights: Weight[] }) {
     return chartData.filter((p) => p.date >= cutoff);
   }, [chartData, windowPreset]);
 
+  const trend = useMemo(() => {
+    if (visibleData.length < 2) return null;
+    const first = visibleData[0].daily;
+    const last = visibleData[visibleData.length - 1].daily;
+    const delta = Math.round((last - first) * 100) / 100;
+    const pct = first !== 0 ? Math.round((delta / first) * 1000) / 10 : 0;
+    return { delta, pct };
+  }, [visibleData]);
+
   function toggleAverage(avg: Average) {
     setVisibleAvgs((prev) => {
       const next = new Set(prev);
@@ -249,6 +258,29 @@ export function Chart({ weights }: { weights: Weight[] }) {
           </LineChart>
         </ChartContainer>
       </CardContent>
+      {trend && (
+        <CardFooter>
+          <div className="flex w-full items-start gap-2 text-sm">
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2 leading-none font-medium">
+                {trend.delta === 0
+                  ? "Weight steady"
+                  : trend.delta > 0
+                    ? `Up ${trend.delta} (${trend.pct}%)`
+                    : `Down ${Math.abs(trend.delta)} (${Math.abs(trend.pct)}%)`}
+                {trend.delta >= 0 ? (
+                  <TrendingUp className="h-4 w-4" />
+                ) : (
+                  <TrendingDown className="h-4 w-4" />
+                )}
+              </div>
+              <div className="text-muted-foreground flex items-center gap-2 leading-none">
+                Over the selected {windowPreset === "All" ? "history" : windowPreset} window
+              </div>
+            </div>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }

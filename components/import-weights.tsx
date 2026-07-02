@@ -1,5 +1,6 @@
 "use client";
 
+import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { importWeightEntries } from "@/actions/weight";
@@ -49,11 +50,16 @@ export function ImportWeightsButton({ session }: { session: Session }) {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="relative">
       <Button variant={"outline"} onClick={handleImport} disabled={isPending}>
+        <Upload className="h-4 w-4" />
         {isPending ? "Importing..." : "Import JSON"}
       </Button>
-      {error && <span className="text-destructive text-sm">{error}</span>}
+      {error && (
+        <span className="absolute top-full left-0 mt-1 whitespace-nowrap text-destructive text-sm">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

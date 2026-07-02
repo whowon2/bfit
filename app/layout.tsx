@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import Header from "@/components/header";
+
+const REPO_URL = "https://github.com/whowon2/bfit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +35,17 @@ export default function RootLayout({
       >
         <Header />
         {children}
-        <div>Made by Whowon</div>
+        <footer className="container flex w-full items-center justify-center gap-1 p-4 text-muted-foreground text-sm">
+          Made by Whowon ·{" "}
+          <Link
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            GitHub
+          </Link>
+        </footer>
       </body>
     </html>
   );
