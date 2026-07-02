@@ -14,7 +14,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
-import { calcBmr, calcDailyCalorieChange, calcMacros } from "@/lib/nutrition";
+import {
+  calcBmr,
+  calcDailyCalorieChange,
+  calcMacros,
+  calcTdee,
+} from "@/lib/nutrition";
 import { CreateProfileForm } from "../profile/create-form";
 
 export default async function NutritionPage() {
@@ -67,7 +72,11 @@ export default async function NutritionPage() {
         })
       : null;
 
-  const targetCalories = bmr !== null ? bmr + (dailyCalorieChange ?? 0) : null;
+  const tdee =
+    bmr !== null ? calcTdee({ bmr, activityLevel: profile.activityLevel }) : null;
+
+  const targetCalories =
+    tdee !== null ? tdee + (dailyCalorieChange ?? 0) : null;
 
   const macros =
     weightKg !== null && targetCalories !== null

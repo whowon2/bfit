@@ -1,7 +1,7 @@
 "use server";
 
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/db/drizzle";
 import { userProfile, weight } from "@/db/schema";
 
@@ -19,10 +19,14 @@ export async function createProfile(userId: string, data: any) {
     userId: userId,
     ...data,
   });
+  revalidatePath("/dashboard");
+  revalidatePath("/profile");
 }
 
 export async function updateProfile(userId: string, data: any) {
   await db.update(userProfile).set(data).where(eq(userProfile.userId, userId));
+  revalidatePath("/dashboard");
+  revalidatePath("/profile");
 }
 
 // 🔹 Get all weight entries for a user

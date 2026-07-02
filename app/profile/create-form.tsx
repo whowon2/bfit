@@ -3,8 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { type Resolver, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { createProfile } from "@/actions/weight";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export const formSchema = z.object({
 });
 
 export function CreateProfileForm({ session }: { session: Session }) {
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema) as Resolver<z.infer<typeof formSchema>>,
     defaultValues: {
@@ -68,14 +70,14 @@ export function CreateProfileForm({ session }: { session: Session }) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-
-    await createProfile(session.user.id, values);
+    try {
+      await createProfile(session.user.id, values);
+      toast.success("Profile saved.");
+      router.refresh();
+    } catch {
+      toast.error("Failed to save profile. Please try again.");
+    }
   }
-
-  useEffect(() => {
-    console.log("errors", form.formState.errors);
-  }, [form.formState]);
 
   return (
     <Form {...form}>
@@ -318,8 +320,12 @@ export function CreateProfileForm({ session }: { session: Session }) {
           )}
         />
 
-        <Button type="submit" className="mt-2">
-          Save Profile
+        <Button
+          type="submit"
+          className="mt-2"
+          disabled={form.formState.isSubmitting || !form.formState.isDirty}
+        >
+          {form.formState.isSubmitting ? "Saving..." : "Save Profile"}
         </Button>
       </form>
     </Form>

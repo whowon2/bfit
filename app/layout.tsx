@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import Sidebar from "@/components/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 const REPO_URL = "https://github.com/whowon2/bfit";
 
@@ -48,6 +49,7 @@ export default function RootLayout({
             </Link>
           </footer>
         </div>
+        <Toaster />
       </body>
     </html>
   );

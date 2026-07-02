@@ -1,4 +1,5 @@
 import { differenceInYears } from "date-fns";
+import { Info } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
@@ -13,8 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { auth } from "@/lib/auth";
-import { calcBmr, calcDailyCalorieChange } from "@/lib/nutrition";
+import { calcBmr, calcDailyCalorieChange, calcTdee } from "@/lib/nutrition";
 import { CreateProfileForm } from "./create-form";
 
 const SEX_LABELS: Record<string, string> = {
@@ -65,6 +71,11 @@ export default async function ProfilePage() {
       sex: profile.sex,
     });
   }
+
+  const tdee =
+    bmr !== null
+      ? calcTdee({ bmr, activityLevel: profile.activityLevel })
+      : null;
 
   // Uses latest weight for current mass, latest known BF% (may be an older
   // entry than the latest weight log) as the current body fat reading.
@@ -118,6 +129,12 @@ export default async function ProfilePage() {
     {
       label: "BMR",
       value: bmr ? `${bmr} kcal/day` : "—",
+      info: "Mifflin-St Jeor equation: 10×weight(kg) + 6.25×height(cm) − 5×age + sex offset (+5 male, −161 female). This is basal rate at rest — activity level doesn't change it, it scales BMR into TDEE instead.",
+    },
+    {
+      label: "TDEE",
+      value: tdee ? `${tdee} kcal/day` : "—",
+      info: "BMR × activity multiplier (sedentary 1.2, light 1.375, moderate 1.55, high 1.725). This is your maintenance calories — the baseline used for cut/bulk targets.",
     },
     {
       label:
@@ -149,7 +166,19 @@ export default async function ProfilePage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
             {stats.map((stat) => (
               <div key={stat.label} className="flex flex-col gap-0.5">
-                <dt className="text-muted-foreground text-xs">{stat.label}</dt>
+                <dt className="text-muted-foreground text-xs flex items-center gap-1">
+                  {stat.label}
+                  {stat.info ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="size-3 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-64">
+                        {stat.info}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                </dt>
                 <dd className="font-medium text-sm">{stat.value}</dd>
               </div>
             ))}

@@ -15,6 +15,30 @@ export function calcBmr({
   return Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + sexOffset);
 }
 
+const ACTIVITY_MULTIPLIERS: Record<
+  NonNullable<Profile["activityLevel"]>,
+  number
+> = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  high: 1.725,
+};
+
+// TDEE = BMR scaled by activity level (Harris-Benedict activity multipliers).
+export function calcTdee({
+  bmr,
+  activityLevel,
+}: {
+  bmr: number;
+  activityLevel: Profile["activityLevel"];
+}) {
+  const multiplier = activityLevel
+    ? ACTIVITY_MULTIPLIERS[activityLevel]
+    : ACTIVITY_MULTIPLIERS.sedentary;
+  return Math.round(bmr * multiplier);
+}
+
 // Daily calorie deficit/surplus to reach targetBodyFat within targetWeeks,
 // assuming lean mass stays constant (7700 kcal ≈ 1 kg fat).
 export function calcDailyCalorieChange({
