@@ -25,6 +25,34 @@ export function WeightList({
     (a, b) => b.date.getTime() - a.date.getTime(),
   );
 
+  const monthStats = new Map<string, { avg: number; diff: number | null }>();
+  const monthGroups = new Map<
+    string,
+    { total: number; count: number; time: number }
+  >();
+  for (const w of weights) {
+    const key = format(w.date, "MMMM yyyy");
+    const group = monthGroups.get(key) ?? {
+      total: 0,
+      count: 0,
+      time: w.date.getTime(),
+    };
+    group.total += parseFloat(w.value);
+    group.count += 1;
+    monthGroups.set(key, group);
+  }
+  const orderedMonths = [...monthGroups.entries()].sort(
+    (a, b) => a[1].time - b[1].time,
+  );
+  orderedMonths.forEach(([key, group], i) => {
+    const avg = group.total / group.count;
+    const prevAvg =
+      i > 0
+        ? orderedMonths[i - 1][1].total / orderedMonths[i - 1][1].count
+        : null;
+    monthStats.set(key, { avg, diff: prevAvg === null ? null : avg - prevAvg });
+  });
+
   return (
     <Card
       className={cn(
@@ -66,11 +94,40 @@ export function WeightList({
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
                 >
-                  {showMonth && (
-                    <div className="text-muted-foreground px-2 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide first:pt-1">
-                      {month}
-                    </div>
-                  )}
+                  {showMonth &&
+                    (() => {
+                      const stats = monthStats.get(month);
+                      return (
+                        <div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-1">
+                          <span className="text-muted-foreground shrink-0 text-xs font-semibold uppercase tracking-wide">
+                            {month}
+                          </span>
+                          <hr className="border-border flex-1" />
+                          {stats && (
+                            <span className="shrink-0 text-xs">
+                              <span className="font-medium">
+                                {stats.avg.toFixed(1)}
+                              </span>
+                              {stats.diff !== null && (
+                                <span
+                                  className={cn(
+                                    "ml-1 font-medium",
+                                    stats.diff > 0
+                                      ? "text-red-500"
+                                      : stats.diff < 0
+                                        ? "text-green-500"
+                                        : "text-muted-foreground",
+                                  )}
+                                >
+                                  ({stats.diff > 0 ? "+" : ""}
+                                  {stats.diff.toFixed(1)})
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   <motion.div
                     initial={{
                       opacity: 0,
