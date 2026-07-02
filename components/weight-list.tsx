@@ -88,7 +88,7 @@ export function WeightList({
       {!collapsed && (
         <CardContent className="flex-1 min-h-0 overflow-auto px-2">
           <WeightForm userId={userId} />
-          <div className="flex w-full max-w-sm mx-auto mt-2 items-center gap-2 pb-3">
+          <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
             <ImportWeightsButton session={session} />
             <ExportJsonButton weights={weights} />
           </div>
@@ -167,6 +167,11 @@ export function WeightList({
                         <span className="text-muted-foreground ml-1 text-sm font-normal">
                           {unit}
                         </span>
+                        {w.bodyFatPercent && (
+                          <span className="text-muted-foreground ml-1 text-sm font-normal">
+                            · {w.bodyFatPercent}% BF
+                          </span>
+                        )}
                       </span>
                       <span className="text-muted-foreground text-xs">
                         {format(w.date, "MMM d, yyyy · h:mm a")}

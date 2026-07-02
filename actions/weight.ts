@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/db/drizzle";
 import { userProfile, weight } from "@/db/schema";
@@ -15,14 +15,14 @@ export async function getProfile(userId: string) {
 }
 
 export async function createProfile(userId: string, data: any) {
-  return await db.insert(userProfile).values({
+  await db.insert(userProfile).values({
     userId: userId,
     ...data,
   });
 }
 
 export async function updateProfile(userId: string, data: any) {
-  return await db
+  await db
     .update(userProfile)
     .set(data)
     .where(eq(userProfile.userId, userId));
@@ -42,10 +42,12 @@ export async function addWeightEntry(
   userId: string,
   value: number,
   date: Date = new Date(),
+  bodyFatPercent?: number,
 ) {
   await db.insert(weight).values({
     userId,
     value: value.toString(),
+    bodyFatPercent: bodyFatPercent != null ? bodyFatPercent.toString() : null,
     date,
   });
 
@@ -74,19 +76,26 @@ export async function updateWeightEntry(
   userId: string,
   newValue: number,
   newDate?: Date,
+  newBodyFatPercent?: number | null,
 ) {
-  return await db
+  await db
     .update(weight)
     .set({
       value: newValue.toString(),
       ...(newDate ? { date: newDate } : {}),
+      ...(newBodyFatPercent !== undefined
+        ? {
+            bodyFatPercent:
+              newBodyFatPercent != null ? newBodyFatPercent.toString() : null,
+          }
+        : {}),
     })
     .where(and(eq(weight.id, entryId), eq(weight.userId, userId)));
 }
 
 // 🔹 Delete an entry
 export async function deleteWeightEntry(entryId: number, userId: string) {
-  return await db
+  await db
     .delete(weight)
     .where(and(eq(weight.id, entryId), eq(weight.userId, userId)));
 }
@@ -103,6 +112,30 @@ export async function getWeeklyAverages(userId: string, weeks: number = 4) {
     .groupBy(sql`DATE_TRUNC('week', ${weight.date})`)
     .orderBy(desc(sql`week_start`))
     .limit(weeks);
+}
+
+// 🔹 Get most recent weight entry
+export async function getLatestWeight(userId: string) {
+  const rows = await db
+    .select()
+    .from(weight)
+    .where(eq(weight.userId, userId))
+    .orderBy(desc(weight.date))
+    .limit(1);
+
+  return rows[0];
+}
+
+// 🔹 Get most recent weight entry that has a body fat % recorded
+export async function getLatestBodyFat(userId: string) {
+  const rows = await db
+    .select()
+    .from(weight)
+    .where(and(eq(weight.userId, userId), isNotNull(weight.bodyFatPercent)))
+    .orderBy(desc(weight.date))
+    .limit(1);
+
+  return rows[0];
 }
 
 // 🔹 Get today’s weight (if exists)

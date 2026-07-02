@@ -1,7 +1,11 @@
 import { differenceInYears } from "date-fns";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getProfile } from "@/actions/weight";
+import {
+  getLatestBodyFat,
+  getLatestWeight,
+  getProfile,
+} from "@/actions/weight";
 import {
   Card,
   CardContent,
@@ -49,6 +53,39 @@ export default async function ProfilePage() {
 
   const age = differenceInYears(new Date(), new Date(profile.birthDate));
 
+  const latestWeight = await getLatestWeight(session.user.id);
+  const latestBodyFat = await getLatestBodyFat(session.user.id);
+
+  let bmr: number | null = null;
+  if (profile.height && latestWeight) {
+    const weightKg = Number(latestWeight.value);
+    const heightCm = Number(profile.height);
+    const sexOffset =
+      profile.sex === "male" ? 5 : profile.sex === "female" ? -161 : -78;
+    bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + sexOffset);
+  }
+
+  // Daily calorie deficit/surplus to reach targetBodyFat within targetWeeks,
+  // assuming lean mass stays constant (7700 kcal ≈ 1 kg fat).
+  // Uses latest weight for current mass, latest known BF% (may be an older
+  // entry than the latest weight log) as the current body fat reading.
+  let dailyCalorieChange: number | null = null;
+  if (
+    profile.targetBodyFat &&
+    profile.targetWeeks &&
+    latestWeight &&
+    latestBodyFat
+  ) {
+    const weightKg = Number(latestWeight.value);
+    const currentBodyFat = Number(latestBodyFat.bodyFatPercent);
+    const targetBodyFat = Number(profile.targetBodyFat);
+    const leanMassKg = weightKg * (1 - currentBodyFat / 100);
+    const targetWeightKg = leanMassKg / (1 - targetBodyFat / 100);
+    const deltaKg = targetWeightKg - weightKg;
+    const totalKcal = deltaKg * 7700;
+    dailyCalorieChange = Math.round(totalKcal / (profile.targetWeeks * 7));
+  }
+
   const stats = [
     { label: "Age", value: `${age} yrs` },
     {
@@ -70,8 +107,30 @@ export default async function ProfilePage() {
       value: profile.goal ? GOAL_LABELS[profile.goal] : "—",
     },
     {
-      label: "Target rate",
-      value: profile.targetRate ? `${Number(profile.targetRate)} kg/week` : "—",
+      label: "Body fat %",
+      value: latestBodyFat?.bodyFatPercent
+        ? `${Number(latestBodyFat.bodyFatPercent)}%`
+        : "—",
+    },
+    {
+      label: "Target body fat",
+      value: profile.targetBodyFat
+        ? `${Number(profile.targetBodyFat)}% in ${profile.targetWeeks ?? "—"} wks`
+        : "—",
+    },
+    {
+      label: "BMR",
+      value: bmr ? `${bmr} kcal/day` : "—",
+    },
+    {
+      label:
+        dailyCalorieChange !== null && dailyCalorieChange > 0
+          ? "Daily surplus"
+          : "Daily deficit",
+      value:
+        dailyCalorieChange !== null
+          ? `${dailyCalorieChange > 0 ? "+" : ""}${dailyCalorieChange} kcal/day`
+          : "—",
     },
   ];
 

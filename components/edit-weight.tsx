@@ -35,6 +35,9 @@ export function EditWeightButton({
 }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(weight.value);
+  const [bodyFatPercent, setBodyFatPercent] = useState(
+    weight.bodyFatPercent ?? "",
+  );
   const [date, setDate] = useState<Date>(weight.date);
   const [time, setTime] = useState<string>(format(weight.date, "HH:mm"));
   const [isPending, startTransition] = useTransition();
@@ -44,6 +47,10 @@ export function EditWeightButton({
     const newValue = Number(value);
     if (Number.isNaN(newValue)) return;
 
+    const newBodyFatPercent =
+      bodyFatPercent === "" ? null : Number(bodyFatPercent);
+    if (newBodyFatPercent !== null && Number.isNaN(newBodyFatPercent)) return;
+
     const entryDate = new Date(date);
     if (time) {
       const [hours, minutes] = time.split(":").map(Number);
@@ -51,7 +58,13 @@ export function EditWeightButton({
     }
 
     startTransition(async () => {
-      await updateWeightEntry(weight.id, userId, newValue, entryDate);
+      await updateWeightEntry(
+        weight.id,
+        userId,
+        newValue,
+        entryDate,
+        newBodyFatPercent,
+      );
       router.refresh();
       setOpen(false);
     });
@@ -65,6 +78,7 @@ export function EditWeightButton({
         setOpen(next);
         if (next) {
           setValue(weight.value);
+          setBodyFatPercent(weight.bodyFatPercent ?? "");
           setDate(weight.date);
           setTime(format(weight.date, "HH:mm"));
         }
@@ -89,6 +103,17 @@ export function EditWeightButton({
               className="flex-1"
             />
             <span className="text-muted-foreground text-sm">{unit}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              step={0.1}
+              value={bodyFatPercent}
+              onChange={(e) => setBodyFatPercent(e.target.value)}
+              placeholder="Body fat %"
+              className="flex-1"
+            />
+            <span className="text-muted-foreground text-sm">%</span>
           </div>
           <div className="flex gap-2">
             <Popover>

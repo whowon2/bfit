@@ -15,6 +15,13 @@
       "when": 1782957619532,
       "tag": "0001_dashing_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782991200000,
+      "tag": "0002_add_body_fat",
+      "breakpoints": true
     }
   ]
 }

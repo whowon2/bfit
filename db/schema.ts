@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   decimal,
+  integer,
   pgTable,
   serial,
   text,
@@ -79,6 +80,7 @@ export const weight = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     // Better to use decimal for weight (e.g. 72.5 kg)
     value: decimal("value", { precision: 5, scale: 2 }).notNull(),
+    bodyFatPercent: decimal("body_fat_percent", { precision: 4, scale: 1 }),
     date: timestamp("date").defaultNow().notNull(), // default to current day
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -101,7 +103,8 @@ export const userProfile = pgTable("user_profile", {
     "sedentary" | "light" | "moderate" | "high"
   >(),
   goal: text("goal").$type<"cut" | "bulk" | "maintain">().default("maintain"),
-  targetRate: decimal("target_rate", { precision: 4, scale: 2 }).default("0.5"), // kg/week
+  targetBodyFat: decimal("target_body_fat", { precision: 4, scale: 1 }), // %
+  targetWeeks: integer("target_weeks"), // weeks to reach targetBodyFat
   maintenanceCalories: decimal("maintenance_calories", {
     precision: 6,
     scale: 0,

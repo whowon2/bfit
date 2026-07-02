@@ -40,7 +40,8 @@ export const formSchema = z.object({
   height: z.number().min(100).max(300),
   activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
   goal: z.enum(["cut", "bulk", "maintain"]),
-  targetRate: z.number().min(0).max(1),
+  targetBodyFat: z.number().min(3).max(60),
+  targetWeeks: z.number().min(1).max(104),
   maintenanceCalories: z.number().min(0).max(10000),
   currentCalories: z.number().min(0).max(10000),
 });
@@ -54,7 +55,8 @@ export function CreateProfileForm({ session }: { session: Session }) {
       height: 180,
       activityLevel: "moderate",
       goal: "maintain",
-      targetRate: 0.5,
+      targetBodyFat: 15,
+      targetWeeks: 12,
       maintenanceCalories: 0,
       currentCalories: 0,
     },
@@ -214,24 +216,45 @@ export function CreateProfileForm({ session }: { session: Session }) {
           )}
         />
 
-        {/* Target Rate */}
+        {/* Target Body Fat */}
         <FormField
           control={form.control}
-          name="targetRate"
+          name="targetBodyFat"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Target Rate (kg/week)</FormLabel>
+              <FormLabel>Target Body Fat (%)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   step="0.1"
-                  placeholder="e.g., 0.5"
+                  placeholder="e.g., 15"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Target Weeks */}
+        <FormField
+          control={form.control}
+          name="targetWeeks"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Timeframe (weeks)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="1"
+                  placeholder="e.g., 12"
                   {...field}
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 />
               </FormControl>
               <FormDescription>
-                Ideal: 0.5 for cutting, 0.25 for bulking.
+                How many weeks to reach your target body fat %.
               </FormDescription>
               <FormMessage />
             </FormItem>

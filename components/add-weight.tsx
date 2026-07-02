@@ -26,13 +26,16 @@ export default function WeightForm({ userId }: { userId: string }) {
       ref={formRef}
       action={(formData) => {
         const value = Number(formData.get("value"));
+        const bodyFatRaw = formData.get("bodyFatPercent");
+        const bodyFatPercent =
+          bodyFatRaw && bodyFatRaw !== "" ? Number(bodyFatRaw) : undefined;
         const entryDate = date ? new Date(date) : new Date();
         if (time) {
           const [hours, minutes] = time.split(":").map(Number);
           entryDate.setHours(hours, minutes, 0, 0);
         }
         startTransition(async () => {
-          await addWeightEntry(userId, value, entryDate);
+          await addWeightEntry(userId, value, entryDate, bodyFatPercent);
           formRef.current?.reset();
           setDate(undefined);
           setTime("");
@@ -47,6 +50,13 @@ export default function WeightForm({ userId }: { userId: string }) {
         step={0.01}
         placeholder="Enter weight"
         required
+        className=""
+      />
+      <Input
+        type="number"
+        name="bodyFatPercent"
+        step={0.1}
+        placeholder="Body fat % (optional)"
         className=""
       />
       <div className="flex w-full gap-2">
