@@ -61,7 +61,10 @@ export async function removeWeightEntry(entryId: number) {
 export async function importWeightEntries(
   weights: { value: string; data: Date; userId: string }[],
 ) {
-  await db.insert(weight).values(weights);
+  await db
+    .insert(weight)
+    .values(weights)
+    .onConflictDoNothing({ target: [weight.userId, weight.date] });
   revalidateTag("weights", "max");
 }
 

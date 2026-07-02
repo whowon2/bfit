@@ -6,6 +6,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -69,20 +70,24 @@ export const verification = pgTable("verification", {
     .notNull(),
 });
 
-export const weight = pgTable("weight", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  // Better to use decimal for weight (e.g. 72.5 kg)
-  value: decimal("value", { precision: 5, scale: 2 }).notNull(),
-  date: timestamp("date").defaultNow().notNull(), // default to current day
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const weight = pgTable(
+  "weight",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // Better to use decimal for weight (e.g. 72.5 kg)
+    value: decimal("value", { precision: 5, scale: 2 }).notNull(),
+    date: timestamp("date").defaultNow().notNull(), // default to current day
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [unique().on(table.userId, table.date)],
+);
 
 export const userProfile = pgTable("user_profile", {
   id: serial("id").primaryKey(),
