@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import type { Session } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,8 @@ export const formSchema = z.object({
   goal: z.enum(["cut", "bulk", "maintain"]),
   targetBodyFat: z.number().min(3).max(60),
   targetWeeks: z.number().min(1).max(104),
+  carbRatioPercent: z.number().min(0).max(100),
+  proteinPerKg: z.number().min(1).max(3),
   maintenanceCalories: z.number().min(0).max(10000),
   currentCalories: z.number().min(0).max(10000),
 });
@@ -57,6 +60,8 @@ export function CreateProfileForm({ session }: { session: Session }) {
       goal: "maintain",
       targetBodyFat: 15,
       targetWeeks: 12,
+      carbRatioPercent: 50,
+      proteinPerKg: 1.8,
       maintenanceCalories: 0,
       currentCalories: 0,
     },
@@ -255,6 +260,58 @@ export function CreateProfileForm({ session }: { session: Session }) {
               </FormControl>
               <FormDescription>
                 How many weeks to reach your target body fat %.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Protein per kg */}
+        <FormField
+          control={form.control}
+          name="proteinPerKg"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Protein target — {field.value}g/kg</FormLabel>
+              <FormControl>
+                <Slider
+                  value={[field.value]}
+                  onValueChange={([v]) => field.onChange(v)}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                />
+              </FormControl>
+              <FormDescription>
+                Grams of protein per kg bodyweight. Typical range: 1-3g/kg.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Carb/Fat Split */}
+        <FormField
+          control={form.control}
+          name="carbRatioPercent"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Carb / Fat split — Carbs {field.value}% · Fat{" "}
+                {100 - field.value}%
+              </FormLabel>
+              <FormControl>
+                <Slider
+                  value={[field.value]}
+                  onValueChange={([v]) => field.onChange(v)}
+                  min={0}
+                  max={100}
+                  step={5}
+                />
+              </FormControl>
+              <FormDescription>
+                Remaining calories after protein split between carbs and fat
+                using this ratio.
               </FormDescription>
               <FormMessage />
             </FormItem>

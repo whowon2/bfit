@@ -1,0 +1,1 @@
+ALTER TABLE "user_profile" ADD COLUMN "protein_per_kg" numeric(2, 1) DEFAULT '1.8';

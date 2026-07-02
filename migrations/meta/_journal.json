@@ -19,8 +19,22 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1782991200000,
+      "when": 1782960000000,
       "tag": "0002_add_body_fat",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782963019265,
+      "tag": "0003_sticky_jack_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782963159309,
+      "tag": "0004_faulty_calypso",
       "breakpoints": true
     }
   ]

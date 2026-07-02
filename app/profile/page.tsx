@@ -14,8 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { calcBmr, calcDailyCalorieChange } from "@/lib/nutrition";
 import { CreateProfileForm } from "./create-form";
-import { UpdateProfileForm } from "./update-form";
 
 const SEX_LABELS: Record<string, string> = {
   male: "Male",
@@ -58,15 +58,14 @@ export default async function ProfilePage() {
 
   let bmr: number | null = null;
   if (profile.height && latestWeight) {
-    const weightKg = Number(latestWeight.value);
-    const heightCm = Number(profile.height);
-    const sexOffset =
-      profile.sex === "male" ? 5 : profile.sex === "female" ? -161 : -78;
-    bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + sexOffset);
+    bmr = calcBmr({
+      weightKg: Number(latestWeight.value),
+      heightCm: Number(profile.height),
+      age,
+      sex: profile.sex,
+    });
   }
 
-  // Daily calorie deficit/surplus to reach targetBodyFat within targetWeeks,
-  // assuming lean mass stays constant (7700 kcal ≈ 1 kg fat).
   // Uses latest weight for current mass, latest known BF% (may be an older
   // entry than the latest weight log) as the current body fat reading.
   let dailyCalorieChange: number | null = null;
@@ -76,14 +75,12 @@ export default async function ProfilePage() {
     latestWeight &&
     latestBodyFat
   ) {
-    const weightKg = Number(latestWeight.value);
-    const currentBodyFat = Number(latestBodyFat.bodyFatPercent);
-    const targetBodyFat = Number(profile.targetBodyFat);
-    const leanMassKg = weightKg * (1 - currentBodyFat / 100);
-    const targetWeightKg = leanMassKg / (1 - targetBodyFat / 100);
-    const deltaKg = targetWeightKg - weightKg;
-    const totalKcal = deltaKg * 7700;
-    dailyCalorieChange = Math.round(totalKcal / (profile.targetWeeks * 7));
+    dailyCalorieChange = calcDailyCalorieChange({
+      weightKg: Number(latestWeight.value),
+      currentBodyFat: Number(latestBodyFat.bodyFatPercent),
+      targetBodyFat: Number(profile.targetBodyFat),
+      targetWeeks: profile.targetWeeks,
+    });
   }
 
   const stats = [
@@ -157,18 +154,6 @@ export default async function ProfilePage() {
               </div>
             ))}
           </dl>
-        </CardContent>
-      </Card>
-
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Edit profile</CardTitle>
-          <CardDescription>
-            Update your details to keep calorie and rate targets accurate.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <UpdateProfileForm session={session} profile={profile} />
         </CardContent>
       </Card>
     </div>

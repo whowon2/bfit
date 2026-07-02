@@ -22,10 +22,7 @@ export async function createProfile(userId: string, data: any) {
 }
 
 export async function updateProfile(userId: string, data: any) {
-  await db
-    .update(userProfile)
-    .set(data)
-    .where(eq(userProfile.userId, userId));
+  await db.update(userProfile).set(data).where(eq(userProfile.userId, userId));
 }
 
 // 🔹 Get all weight entries for a user

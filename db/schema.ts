@@ -105,6 +105,10 @@ export const userProfile = pgTable("user_profile", {
   goal: text("goal").$type<"cut" | "bulk" | "maintain">().default("maintain"),
   targetBodyFat: decimal("target_body_fat", { precision: 4, scale: 1 }), // %
   targetWeeks: integer("target_weeks"), // weeks to reach targetBodyFat
+  carbRatioPercent: integer("carb_ratio_percent").default(50), // % of post-protein calories as carbs (rest is fat)
+  proteinPerKg: decimal("protein_per_kg", { precision: 2, scale: 1 }).default(
+    "1.8",
+  ), // g of protein per kg bodyweight, 1-3
   maintenanceCalories: decimal("maintenance_calories", {
     precision: 6,
     scale: 0,

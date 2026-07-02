@@ -1,0 +1,1 @@
+ALTER TABLE "user_profile" ADD COLUMN "carb_ratio_percent" integer DEFAULT 50;
