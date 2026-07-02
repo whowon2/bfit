@@ -12,8 +12,8 @@ export default async function Sidebar() {
   });
 
   return (
-    <aside className="sticky top-0 flex h-screen w-12 md:w-16 shrink-0 flex-col items-center justify-between border-border border-r py-2 md:py-4">
-      <div className="flex flex-col items-center gap-2 md:gap-4">
+    <aside className="sticky top-0 z-40 flex h-14 w-full shrink-0 flex-row items-center justify-between border-border border-b px-2 md:h-screen md:w-16 md:flex-col md:justify-between md:border-r md:border-b-0 md:px-0 md:py-4">
+      <div className="flex flex-row items-center gap-2 md:flex-col md:gap-4">
         <Tooltip>
           <TooltipTrigger asChild>
             <Link href="/">
@@ -22,13 +22,13 @@ export default async function Sidebar() {
               </Button>
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">
+          <TooltipContent side="bottom">
             <p>BFit</p>
           </TooltipContent>
         </Tooltip>
 
         {session?.user && (
-          <nav className="flex flex-col items-center gap-1">
+          <nav className="flex flex-row items-center gap-1 md:flex-col">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/dashboard">
@@ -37,7 +37,7 @@ export default async function Sidebar() {
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right">
+              <TooltipContent side="bottom">
                 <p>Dashboard</p>
               </TooltipContent>
             </Tooltip>
@@ -50,7 +50,7 @@ export default async function Sidebar() {
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right">
+              <TooltipContent side="bottom">
                 <p>Profile</p>
               </TooltipContent>
             </Tooltip>
@@ -69,7 +69,7 @@ export default async function Sidebar() {
               </Button>
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">
+          <TooltipContent side="bottom">
             <p>Login</p>
           </TooltipContent>
         </Tooltip>

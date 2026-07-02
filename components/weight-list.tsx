@@ -88,7 +88,7 @@ export function WeightList({
       {!collapsed && (
         <CardContent className="flex-1 min-h-0 overflow-auto px-2">
           <WeightForm userId={userId} />
-          <div className="flex w-full max-w-sm mx-auto items-center gap-2 pb-3">
+          <div className="flex w-full max-w-sm mx-auto mt-2 items-center gap-2 pb-3">
             <ImportWeightsButton session={session} />
             <ExportJsonButton weights={weights} />
           </div>
