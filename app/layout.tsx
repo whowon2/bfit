@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
-import Header from "@/components/header";
+import Sidebar from "@/components/sidebar";
 
 const REPO_URL = "https://github.com/whowon2/bfit";
 
@@ -30,22 +30,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex w-full flex-col items-center justify-between bg-background font-sans`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex w-full bg-background font-sans`}
         suppressHydrationWarning
       >
-        <Header />
-        {children}
-        <footer className="container flex w-full items-center justify-center gap-1 p-4 text-muted-foreground text-sm">
-          Made by Whowon ·{" "}
-          <Link
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-4 hover:text-foreground"
-          >
-            GitHub
-          </Link>
-        </footer>
+        <Sidebar />
+        <div className="flex min-h-screen w-full flex-col items-center justify-between">
+          {children}
+          <footer className="container flex w-full items-center justify-center gap-1 p-4 text-muted-foreground text-sm">
+            Made by Whowon ·{" "}
+            <Link
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              GitHub
+            </Link>
+          </footer>
+        </div>
       </body>
     </html>
   );
