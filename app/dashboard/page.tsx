@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         <ExportJsonButton weights={weights} />
       </div>
 
-      <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch">
+      <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch lg:h-[700px]">
         <Chart weights={weights} />
 
         <WeightList weights={weights} unit={unit} userId={session.user.id} />
