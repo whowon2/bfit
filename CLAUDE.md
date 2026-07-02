@@ -14,7 +14,7 @@ BFit is a Next.js 16 (App Router) fitness tracker: weight logging, progress char
 - `bun run lint` — Biome check (lint + import organization)
 - `bun run format` — Biome format, writes in place
 - `bunx drizzle-kit generate` — generate a new migration from `db/schema.ts` changes
-- `bunx drizzle-kit migrate` — apply migrations (also runs automatically via `postinstall`)
+- `bunx drizzle-kit migrate` — apply migrations (run manually; not wired into `postinstall`)
 - `bunx drizzle-kit studio` — browse the DB
 
 No test suite is configured in this repo.

@@ -9,8 +9,7 @@
     "lint": "biome check",
     "format": "biome format --write",
     "db:g": "drizzle-kit generate",
-    "db:m": "drizzle-kit migrate",
-    "postinstall": "drizzle-kit migrate"
+    "db:m": "drizzle-kit migrate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
