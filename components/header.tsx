@@ -17,7 +17,10 @@ export default async function Header() {
       </Link>
 
       {session?.user ? (
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Link href="/dashboard">
+            <Button variant="ghost">Dashboard</Button>
+          </Link>
           <Link href="/profile">
             <Avatar>
               <AvatarImage src="https://github.com/shadcn.png" />
