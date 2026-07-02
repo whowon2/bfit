@@ -114,14 +114,14 @@ const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
         fill="#666"
         transform="rotate(-55)"
       >
-        {format(new Date(Number(payload.value)), "yy-MM-dd")}
+        {format(new Date(Number(payload.value)), "dd/MM/yyyy")}
       </text>
     </g>
   );
 };
 
 export function Chart({ weights }: { weights: Weight[] }) {
-  const [windowPreset, setWindowPreset] = useState<WindowPreset>("All");
+  const [windowPreset, setWindowPreset] = useState<WindowPreset>("1Y");
   const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
     new Set(AVERAGES),
   );
