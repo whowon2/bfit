@@ -26,10 +26,6 @@ export default function Home() {
           </Link>
         </div>
       </section>
-
-      <footer className="absolute bottom-6 text-sm text-muted-foreground">
-        Made with ❤️ for your fitness journey
-      </footer>
     </main>
   );
 }
