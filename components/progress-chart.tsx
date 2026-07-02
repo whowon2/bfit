@@ -159,7 +159,7 @@ export function Chart({ weights }: { weights: Weight[] }) {
   }
 
   return (
-    <Card className="w-full flex flex-col h-full">
+    <Card className="w-full flex-1 flex flex-col h-full">
       <CardHeader>
         <CardTitle>Progress</CardTitle>
         <CardAction className="flex gap-1">
