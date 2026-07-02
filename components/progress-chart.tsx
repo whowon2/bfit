@@ -159,7 +159,7 @@ export function Chart({ weights }: { weights: Weight[] }) {
   }
 
   return (
-    <Card className="w-full">
+    <Card className="w-full flex flex-col h-full">
       <CardHeader>
         <CardTitle>Progress</CardTitle>
         <CardAction className="flex gap-1">
@@ -175,7 +175,7 @@ export function Chart({ weights }: { weights: Weight[] }) {
           ))}
         </CardAction>
       </CardHeader>
-      <CardContent className="w-full">
+      <CardContent className="w-full flex flex-1 flex-col min-h-0">
         <div className="flex gap-1 pb-4">
           {WINDOW_PRESETS.map((preset) => (
             <Button
@@ -188,7 +188,7 @@ export function Chart({ weights }: { weights: Weight[] }) {
             </Button>
           ))}
         </div>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="aspect-auto flex-1 min-h-0">
           <LineChart
             accessibilityLayer
             data={visibleData}
@@ -275,7 +275,8 @@ export function Chart({ weights }: { weights: Weight[] }) {
                 )}
               </div>
               <div className="text-muted-foreground flex items-center gap-2 leading-none">
-                Over the selected {windowPreset === "All" ? "history" : windowPreset} window
+                Over the selected{" "}
+                {windowPreset === "All" ? "history" : windowPreset} window
               </div>
             </div>
           </div>
