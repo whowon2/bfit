@@ -268,6 +268,7 @@ export function Chart({ weights, unit }: { weights: Weight[]; unit: string }) {
             />
             {visibleAvgs.has("daily") && (
               <Line
+                name="daily"
                 dataKey="daily"
                 type="monotone"
                 stroke="var(--color-daily)"
@@ -277,6 +278,7 @@ export function Chart({ weights, unit }: { weights: Weight[]; unit: string }) {
             )}
             {visibleAvgs.has("weekly") && (
               <Line
+                name="weekly"
                 data={visibleWeeklyData}
                 dataKey="value"
                 type="monotone"
@@ -287,6 +289,7 @@ export function Chart({ weights, unit }: { weights: Weight[]; unit: string }) {
             )}
             {visibleAvgs.has("monthly") && (
               <Line
+                name="monthly"
                 data={visibleMonthlyData}
                 dataKey="value"
                 type="monotone"
@@ -295,7 +298,7 @@ export function Chart({ weights, unit }: { weights: Weight[]; unit: string }) {
                 dot={{ r: 3 }}
               />
             )}
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
           </LineChart>
         </ChartContainer>
       </CardContent>
