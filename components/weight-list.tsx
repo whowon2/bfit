@@ -117,7 +117,7 @@ export function WeightList({
                           {stats && (
                             <span className="shrink-0 text-xs">
                               <span className="font-medium">
-                                {stats.avg.toFixed(1)}
+                                {stats.avg.toFixed(1)} {unit}
                               </span>
                               {stats.diff !== null && (
                                 <span
@@ -131,7 +131,7 @@ export function WeightList({
                                   )}
                                 >
                                   ({stats.diff > 0 ? "+" : ""}
-                                  {stats.diff.toFixed(1)})
+                                  {stats.diff.toFixed(1)} {unit})
                                 </span>
                               )}
                             </span>
