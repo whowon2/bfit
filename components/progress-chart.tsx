@@ -1,6 +1,6 @@
 "use client";
 
-import { format, sub, subDays } from "date-fns";
+import { format, startOfMonth, startOfWeek, sub } from "date-fns";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -51,56 +51,65 @@ const WINDOW_MONTHS: Record<Exclude<WindowPreset, "All">, number> = {
   "1Y": 12,
 };
 
-interface ChartPoint {
+interface DailyPoint {
   date: number; // timestamp, so the axis can space points by real elapsed time
   daily: number;
-  weekly: number;
-  monthly: number;
 }
+
+interface PeriodPoint {
+  date: number; // period start timestamp
+  value: number;
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // One point per actual log entry, positioned on a real time scale (not a
 // category axis) — a week without a log just stretches that segment of the
 // line horizontally instead of connecting distant entries as if adjacent.
-function buildChartData(weights: Weight[]): ChartPoint[] {
-  if (weights.length === 0) return [];
+function buildDailyPoints(weights: Weight[]): DailyPoint[] {
+  return [...weights]
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map((w) => ({ date: w.date.getTime(), daily: Number(w.value) }));
+}
 
+// Groups entries by calendar period (week/month) and collapses each group to
+// a single averaged point, positioned at the period's start — a true
+// per-period aggregate rather than a per-entry rolling average.
+function buildPeriodPoints(
+  weights: Weight[],
+  periodStart: (date: Date) => Date,
+): PeriodPoint[] {
   const sorted = [...weights].sort(
     (a, b) => a.date.getTime() - b.date.getTime(),
   );
 
-  // Trailing averages over the real last 7/30 days (not entry count), via a
-  // two-pointer sliding window — O(n). Computed over the full history so a
-  // later time-window filter doesn't skew the average at the window's edge.
-  let weekLo = 0;
-  let monthLo = 0;
-  let weekSum = 0;
-  let monthSum = 0;
-
-  return sorted.map((w, i) => {
-    const date = w.date;
-    const weekStart = subDays(date, 6);
-    const monthStart = subDays(date, 29);
-
-    weekSum += Number(w.value);
-    monthSum += Number(w.value);
-    while (weekLo < i && sorted[weekLo].date < weekStart) {
-      weekSum -= Number(sorted[weekLo].value);
-      weekLo++;
+  const groups = new Map<number, number[]>();
+  for (const w of sorted) {
+    const key = periodStart(w.date).getTime();
+    const group = groups.get(key);
+    if (group) {
+      group.push(Number(w.value));
+    } else {
+      groups.set(key, [Number(w.value)]);
     }
-    while (monthLo < i && sorted[monthLo].date < monthStart) {
-      monthSum -= Number(sorted[monthLo].value);
-      monthLo++;
-    }
+  }
 
-    return {
-      date: date.getTime(),
-      daily: Number(w.value),
-      // Round off float drift from the running +=/-= sum (e.g. 89.99999999997
-      // instead of 90) — weight values only ever have 2 decimal places anyway.
-      weekly: Math.round((weekSum / (i - weekLo + 1)) * 100) / 100,
-      monthly: Math.round((monthSum / (i - monthLo + 1)) * 100) / 100,
-    };
-  });
+  return [...groups.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([date, values]) => ({
+      date,
+      value: round2(values.reduce((sum, v) => sum + v, 0) / values.length),
+    }));
+}
+
+function buildWeeklyPoints(weights: Weight[]): PeriodPoint[] {
+  return buildPeriodPoints(weights, (date) =>
+    startOfWeek(date, { weekStartsOn: 1 }),
+  );
+}
+
+function buildMonthlyPoints(weights: Weight[]): PeriodPoint[] {
+  return buildPeriodPoints(weights, startOfMonth);
 }
 
 const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
@@ -126,16 +135,42 @@ export function Chart({ weights }: { weights: Weight[] }) {
     new Set(AVERAGES),
   );
 
-  const chartData = useMemo(() => buildChartData(weights), [weights]);
+  const dailyData = useMemo(() => buildDailyPoints(weights), [weights]);
+  const weeklyData = useMemo(() => buildWeeklyPoints(weights), [weights]);
+  const monthlyData = useMemo(() => buildMonthlyPoints(weights), [weights]);
 
-  const visibleData = useMemo(() => {
-    if (windowPreset === "All" || chartData.length === 0) return chartData;
-    const last = chartData[chartData.length - 1].date;
-    const cutoff = sub(new Date(last), {
+  const cutoff = useMemo(() => {
+    if (windowPreset === "All" || dailyData.length === 0) return null;
+    const last = dailyData[dailyData.length - 1].date;
+    return sub(new Date(last), {
       months: WINDOW_MONTHS[windowPreset],
     }).getTime();
-    return chartData.filter((p) => p.date >= cutoff);
-  }, [chartData, windowPreset]);
+  }, [dailyData, windowPreset]);
+
+  const visibleData = useMemo(() => {
+    if (cutoff === null) return dailyData;
+    return dailyData.filter((p) => p.date >= cutoff);
+  }, [dailyData, cutoff]);
+
+  const visibleWeeklyData = useMemo(() => {
+    if (cutoff === null) return weeklyData;
+    return weeklyData.filter((p) => p.date >= cutoff);
+  }, [weeklyData, cutoff]);
+
+  const visibleMonthlyData = useMemo(() => {
+    if (cutoff === null) return monthlyData;
+    return monthlyData.filter((p) => p.date >= cutoff);
+  }, [monthlyData, cutoff]);
+
+  const xDomain = useMemo((): [number, number] | undefined => {
+    const dates = [
+      ...visibleData.map((p) => p.date),
+      ...visibleWeeklyData.map((p) => p.date),
+      ...visibleMonthlyData.map((p) => p.date),
+    ];
+    if (dates.length === 0) return undefined;
+    return [Math.min(...dates), Math.max(...dates)];
+  }, [visibleData, visibleWeeklyData, visibleMonthlyData]);
 
   const trend = useMemo(() => {
     if (visibleData.length < 2) return null;
@@ -188,7 +223,10 @@ export function Chart({ weights }: { weights: Weight[] }) {
             </Button>
           ))}
         </div>
-        <ChartContainer config={chartConfig} className="aspect-auto flex-1 min-h-0">
+        <ChartContainer
+          config={chartConfig}
+          className="aspect-auto flex-1 min-h-0"
+        >
           <LineChart
             accessibilityLayer
             data={visibleData}
@@ -201,7 +239,8 @@ export function Chart({ weights }: { weights: Weight[] }) {
             <XAxis
               dataKey="date"
               type="number"
-              domain={["dataMin", "dataMax"]}
+              domain={xDomain ?? ["dataMin", "dataMax"]}
+              allowDuplicatedCategory={false}
               scale="time"
               tickLine={false}
               axisLine={false}
@@ -238,20 +277,22 @@ export function Chart({ weights }: { weights: Weight[] }) {
             )}
             {visibleAvgs.has("weekly") && (
               <Line
-                dataKey="weekly"
+                data={visibleWeeklyData}
+                dataKey="value"
                 type="monotone"
                 stroke="var(--color-weekly)"
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {visibleAvgs.has("monthly") && (
               <Line
-                dataKey="monthly"
+                data={visibleMonthlyData}
+                dataKey="value"
                 type="monotone"
                 stroke="var(--color-monthly)"
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             <ChartLegend content={<ChartLegendContent />} />
