@@ -129,7 +129,7 @@ const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
   );
 };
 
-export function Chart({ weights }: { weights: Weight[] }) {
+export function Chart({ weights, unit }: { weights: Weight[]; unit: string }) {
   const [windowPreset, setWindowPreset] = useState<WindowPreset>("1Y");
   const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
     new Set(AVERAGES),
@@ -307,8 +307,8 @@ export function Chart({ weights }: { weights: Weight[] }) {
                 {trend.delta === 0
                   ? "Weight steady"
                   : trend.delta > 0
-                    ? `Up ${trend.delta} (${trend.pct}%)`
-                    : `Down ${Math.abs(trend.delta)} (${Math.abs(trend.pct)}%)`}
+                    ? `Up ${trend.delta} ${unit} (${trend.pct}%)`
+                    : `Down ${Math.abs(trend.delta)} ${unit} (${Math.abs(trend.pct)}%)`}
                 {trend.delta >= 0 ? (
                   <TrendingUp className="h-4 w-4" />
                 ) : (

@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-2 items-center w-full">
       <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch lg:h-[calc(100vh-2rem)]">
-        <Chart weights={weights} />
+        <Chart weights={weights} unit={unit} />
 
         <WeightList
           weights={weights}
