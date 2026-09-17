@@ -110,82 +110,6 @@ export function UpdateProfileForm({
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-col gap-6 w-full"
       >
-        <div className="flex flex-col gap-4 rounded-md border p-4">
-          <div>
-            <div className="flex items-baseline justify-between">
-              <p className="font-semibold text-xs uppercase tracking-wide">
-                Calories
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Based on{" "}
-                {weightKg !== null ? `${weightKg} kg` : "no weight logged"}
-                {currentBodyFat !== null
-                  ? ` · ${currentBodyFat}% body fat`
-                  : ""}
-              </p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <StatTile
-                label="BMR"
-                unit=" kcal/day"
-                current={current.bmr}
-                preview={preview.bmr}
-              />
-              <StatTile
-                label="TDEE"
-                unit=" kcal/day"
-                current={current.tdee}
-                preview={preview.tdee}
-              />
-              <StatTile
-                label="Surplus/deficit"
-                unit=" kcal/day"
-                current={current.dailyCalorieChange}
-                preview={preview.dailyCalorieChange}
-                signed
-              />
-              <StatTile
-                label="Target calories"
-                unit=" kcal/day"
-                current={current.targetCalories}
-                preview={preview.targetCalories}
-              />
-            </div>
-            {currentBodyFat === null ? (
-              <p className="mt-2 text-muted-foreground text-xs">
-                Target Body Fat and Timeframe only affect Surplus/deficit and
-                Target calories once you log a weight entry with a body fat %.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="border-t pt-4">
-            <p className="font-semibold text-xs uppercase tracking-wide">
-              Macros
-            </p>
-            <div className="mt-2 grid grid-cols-3 gap-4">
-              <StatTile
-                label="Protein"
-                unit=" g"
-                current={current.macros?.proteinG ?? null}
-                preview={preview.macros?.proteinG ?? null}
-              />
-              <StatTile
-                label="Carbs"
-                unit=" g"
-                current={current.macros?.carbsG ?? null}
-                preview={preview.macros?.carbsG ?? null}
-              />
-              <StatTile
-                label="Fat"
-                unit=" g"
-                current={current.macros?.fatG ?? null}
-                preview={preview.macros?.fatG ?? null}
-              />
-            </div>
-          </div>
-        </div>
-
         <div className="flex flex-col gap-4">
           <h3 className="border-b pb-1 font-semibold text-sm">Personal info</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -443,6 +367,82 @@ export function UpdateProfileForm({
                 </FormItem>
               )}
             />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-md border p-4">
+          <div>
+            <div className="flex items-baseline justify-between">
+              <p className="font-semibold text-xs uppercase tracking-wide">
+                Calories
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Based on{" "}
+                {weightKg !== null ? `${weightKg} kg` : "no weight logged"}
+                {currentBodyFat !== null
+                  ? ` · ${currentBodyFat}% body fat`
+                  : ""}
+              </p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatTile
+                label="BMR"
+                unit=" kcal/day"
+                current={current.bmr}
+                preview={preview.bmr}
+              />
+              <StatTile
+                label="TDEE"
+                unit=" kcal/day"
+                current={current.tdee}
+                preview={preview.tdee}
+              />
+              <StatTile
+                label="Surplus/deficit"
+                unit=" kcal/day"
+                current={current.dailyCalorieChange}
+                preview={preview.dailyCalorieChange}
+                signed
+              />
+              <StatTile
+                label="Target calories"
+                unit=" kcal/day"
+                current={current.targetCalories}
+                preview={preview.targetCalories}
+              />
+            </div>
+            {currentBodyFat === null ? (
+              <p className="mt-2 text-muted-foreground text-xs">
+                Target Body Fat and Timeframe only affect Surplus/deficit and
+                Target calories once you log a weight entry with a body fat %.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="border-t pt-4">
+            <p className="font-semibold text-xs uppercase tracking-wide">
+              Macros
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-4">
+              <StatTile
+                label="Protein"
+                unit=" g"
+                current={current.macros?.proteinG ?? null}
+                preview={preview.macros?.proteinG ?? null}
+              />
+              <StatTile
+                label="Carbs"
+                unit=" g"
+                current={current.macros?.carbsG ?? null}
+                preview={preview.macros?.carbsG ?? null}
+              />
+              <StatTile
+                label="Fat"
+                unit=" g"
+                current={current.macros?.fatG ?? null}
+                preview={preview.macros?.fatG ?? null}
+              />
+            </div>
           </div>
         </div>
 
