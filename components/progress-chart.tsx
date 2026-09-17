@@ -2,7 +2,7 @@
 
 import { format, startOfDay, startOfMonth, startOfWeek, sub } from "date-fns";
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -55,6 +55,31 @@ const WINDOW_MONTHS: Record<Exclude<WindowPreset, "All">, number> = {
 };
 
 const SYNC_ID = "progress-chart";
+const PREFS_KEY = "bfit.progress-chart-prefs";
+
+interface ChartPrefs {
+  windowPreset: WindowPreset;
+  visibleAvgs: Average[];
+  showCalories: boolean;
+  showBodyFat: boolean;
+}
+
+function loadPrefs(): Partial<ChartPrefs> {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePrefs(prefs: ChartPrefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // ignore (private browsing, storage disabled, etc.)
+  }
+}
 
 interface DailyPoint {
   date: number; // timestamp, so the axis can space points by real elapsed time
@@ -229,6 +254,39 @@ export function Chart({
   );
   const [showCalories, setShowCalories] = useState(true);
   const [showBodyFat, setShowBodyFat] = useState(true);
+  const hasLoadedPrefs = useRef(false);
+
+  // Prefs are read from localStorage after mount (not in useState's
+  // initializer) so the server-rendered markup matches the client's first
+  // render before hydration swaps in the saved values.
+  useEffect(() => {
+    const prefs = loadPrefs();
+    if (prefs.windowPreset && WINDOW_PRESETS.includes(prefs.windowPreset)) {
+      setWindowPreset(prefs.windowPreset);
+    }
+    if (prefs.visibleAvgs) {
+      setVisibleAvgs(
+        new Set(prefs.visibleAvgs.filter((a) => AVERAGES.includes(a))),
+      );
+    }
+    if (typeof prefs.showCalories === "boolean") {
+      setShowCalories(prefs.showCalories);
+    }
+    if (typeof prefs.showBodyFat === "boolean") {
+      setShowBodyFat(prefs.showBodyFat);
+    }
+    hasLoadedPrefs.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedPrefs.current) return;
+    savePrefs({
+      windowPreset,
+      visibleAvgs: [...visibleAvgs],
+      showCalories,
+      showBodyFat,
+    });
+  }, [windowPreset, visibleAvgs, showCalories, showBodyFat]);
 
   const dailyData = useMemo(() => buildDailyPoints(weights), [weights]);
   const weeklyData = useMemo(() => buildWeeklyPoints(weights), [weights]);
@@ -434,6 +492,7 @@ export function Chart({
                 stroke="var(--color-daily)"
                 strokeWidth={2}
                 dot={{ r: 2 }}
+                connectNulls
               />
             )}
             {visibleAvgs.has("weekly") && (
