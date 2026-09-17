@@ -34,6 +34,8 @@ export function ImportWeightsButton({ session }: { session: Session }) {
                 value: d.value,
                 date: new Date(d.date),
                 userId: session.user.id,
+                bodyFatPercent:
+                  d.bodyFatPercent != null ? String(d.bodyFatPercent) : null,
               }));
 
           await importWeightEntries(weights);

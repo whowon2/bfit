@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getCalorieEntries } from "@/actions/calorie";
 import { getProfile, getWeightEntries } from "@/actions/weight";
 import { Chart } from "@/components/progress-chart";
 import { WeightList } from "@/components/weight-list";
@@ -18,6 +19,7 @@ export default async function DashboardPage() {
   const unit = session.user.weightUnit === "lbs" ? "lbs" : "kg";
 
   const weights = await getWeightEntries(session.user.id);
+  const calories = await getCalorieEntries(session.user.id);
 
   const profile = await getProfile(session.user.id);
 
@@ -28,7 +30,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-2 items-center w-full">
       <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch lg:h-[calc(100vh-2rem)]">
-        <Chart weights={weights} unit={unit} />
+        <Chart weights={weights} calories={calories} unit={unit} />
 
         <WeightList
           weights={weights}

@@ -178,7 +178,12 @@ export async function removeWeightEntry(entryId: number) {
 }
 
 export async function importWeightEntries(
-  weights: { value: string; data: Date; userId: string }[],
+  weights: {
+    value: string;
+    date: Date;
+    userId: string;
+    bodyFatPercent?: string | null;
+  }[],
 ) {
   await db
     .insert(weight)

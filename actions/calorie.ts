@@ -1,9 +1,16 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/drizzle";
 import { calorieLog } from "@/db/schema";
+
+export async function getCalorieEntries(userId: string) {
+  return await db
+    .select()
+    .from(calorieLog)
+    .where(eq(calorieLog.userId, userId));
+}
 
 export async function importCalorieEntries(
   entries: {
