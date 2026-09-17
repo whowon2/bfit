@@ -225,10 +225,35 @@ export default async function ProfilePage() {
                       </span>
                     </p>
                   ) : null}
+                  {entry.calcBefore &&
+                  entry.calcAfter.macros &&
+                  (entry.calcBefore.macros?.proteinG !==
+                    entry.calcAfter.macros.proteinG ||
+                    entry.calcBefore.macros?.carbsG !==
+                      entry.calcAfter.macros.carbsG ||
+                    entry.calcBefore.macros?.fatG !==
+                      entry.calcAfter.macros.fatG) ? (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">Macros </span>
+                      <span className="text-muted-foreground line-through">
+                        {entry.calcBefore.macros
+                          ? `${entry.calcBefore.macros.proteinG}p/${entry.calcBefore.macros.carbsG}c/${entry.calcBefore.macros.fatG}f`
+                          : "—"}
+                      </span>{" "}
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        → {entry.calcAfter.macros.proteinG}p/
+                        {entry.calcAfter.macros.carbsG}c/
+                        {entry.calcAfter.macros.fatG}f
+                      </span>
+                    </p>
+                  ) : null}
                   {!entry.calcBefore ? (
                     <p className="text-muted-foreground text-xs">
                       Initial TDEE {entry.calcAfter.tdee ?? "—"} kcal/day,
                       target {entry.calcAfter.targetCalories ?? "—"} kcal/day
+                      {entry.calcAfter.macros
+                        ? `, macros ${entry.calcAfter.macros.proteinG}p/${entry.calcAfter.macros.carbsG}c/${entry.calcAfter.macros.fatG}f`
+                        : ""}
                     </p>
                   ) : null}
                 </li>
