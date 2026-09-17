@@ -86,110 +86,114 @@ export function WeightList({
         </CardTitle>
       </CardHeader>
       {!collapsed && (
-        <CardContent className="flex-1 min-h-0 overflow-auto px-2">
-          <WeightForm userId={userId} />
-          <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
-            <ImportWeightsButton session={session} />
-            <ExportJsonButton weights={weights} />
+        <CardContent className="flex-1 min-h-0 overflow-hidden px-2 flex flex-col">
+          <div className="shrink-0">
+            <WeightForm userId={userId} />
+            <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
+              <ImportWeightsButton session={session} />
+              <ExportJsonButton weights={weights} />
+            </div>
           </div>
-          <AnimatePresence initial={false}>
-            {sorted.map((w, i) => {
-              const month = format(w.date, "MMMM yyyy");
-              const showMonth =
-                i === 0 || month !== format(sorted[i - 1].date, "MMMM yyyy");
-              return (
-                <motion.div
-                  key={w.id}
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                >
-                  {showMonth &&
-                    (() => {
-                      const stats = monthStats.get(month);
-                      return (
-                        <div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-1">
-                          <span className="text-muted-foreground shrink-0 text-xs font-semibold uppercase tracking-wide">
-                            {month}
-                          </span>
-                          <hr className="border-border flex-1" />
-                          {stats && (
-                            <span className="shrink-0 text-xs">
-                              <span className="font-medium">
-                                {stats.avg.toFixed(1)} {unit}
-                              </span>
-                              {stats.diff !== null && (
-                                <span
-                                  className={cn(
-                                    "ml-1 font-medium",
-                                    stats.diff > 0
-                                      ? "text-red-500"
-                                      : stats.diff < 0
-                                        ? "text-green-500"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  ({stats.diff > 0 ? "+" : ""}
-                                  {stats.diff.toFixed(1)} {unit})
+          <div className="flex-1 min-h-0 overflow-auto">
+            <AnimatePresence initial={false}>
+              {sorted.map((w, i) => {
+                const month = format(w.date, "MMMM yyyy");
+                const showMonth =
+                  i === 0 || month !== format(sorted[i - 1].date, "MMMM yyyy");
+                return (
+                  <motion.div
+                    key={w.id}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                  >
+                    {showMonth &&
+                      (() => {
+                        const stats = monthStats.get(month);
+                        return (
+                          <div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-1">
+                            <span className="text-muted-foreground shrink-0 text-xs font-semibold uppercase tracking-wide">
+                              {month}
+                            </span>
+                            <hr className="border-border flex-1" />
+                            {stats && (
+                              <span className="shrink-0 text-xs">
+                                <span className="font-medium">
+                                  {stats.avg.toFixed(1)} {unit}
                                 </span>
-                              )}
+                                {stats.diff !== null && (
+                                  <span
+                                    className={cn(
+                                      "ml-1 font-medium",
+                                      stats.diff > 0
+                                        ? "text-red-500"
+                                        : stats.diff < 0
+                                          ? "text-green-500"
+                                          : "text-muted-foreground",
+                                    )}
+                                  >
+                                    ({stats.diff > 0 ? "+" : ""}
+                                    {stats.diff.toFixed(1)} {unit})
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    <motion.div
+                      initial={{
+                        opacity: 0,
+                        y: -8,
+                        scale: 0.98,
+                        filter: "blur(4px)",
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                        filter: "blur(0px)",
+                      }}
+                      exit={{
+                        opacity: 0,
+                        y: 8,
+                        scale: 0.98,
+                        filter: "blur(4px)",
+                      }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-accent/50"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {w.value}
+                          <span className="text-muted-foreground ml-1 text-sm font-normal">
+                            {unit}
+                          </span>
+                          {w.bodyFatPercent && (
+                            <span className="text-muted-foreground ml-1 text-sm font-normal">
+                              · {w.bodyFatPercent}% BF
                             </span>
                           )}
-                        </div>
-                      );
-                    })()}
-                  <motion.div
-                    initial={{
-                      opacity: 0,
-                      y: -8,
-                      scale: 0.98,
-                      filter: "blur(4px)",
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      scale: 1,
-                      filter: "blur(0px)",
-                    }}
-                    exit={{
-                      opacity: 0,
-                      y: 8,
-                      scale: 0.98,
-                      filter: "blur(4px)",
-                    }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-accent/50"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {w.value}
-                        <span className="text-muted-foreground ml-1 text-sm font-normal">
-                          {unit}
                         </span>
-                        {w.bodyFatPercent && (
-                          <span className="text-muted-foreground ml-1 text-sm font-normal">
-                            · {w.bodyFatPercent}% BF
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {format(w.date, "MMM d, yyyy · h:mm a")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <EditWeightButton
-                        weight={w}
-                        userId={userId}
-                        unit={unit}
-                      />
-                      <RemoveWeightButton weightId={w.id} />
-                    </div>
+                        <span className="text-muted-foreground text-xs">
+                          {format(w.date, "MMM d, yyyy · h:mm a")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <EditWeightButton
+                          weight={w}
+                          userId={userId}
+                          unit={unit}
+                        />
+                        <RemoveWeightButton weightId={w.id} />
+                      </div>
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                );
+              })}
+            </AnimatePresence>
+          </div>
         </CardContent>
       )}
     </Card>
