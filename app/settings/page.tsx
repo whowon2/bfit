@@ -23,7 +23,7 @@ export default async function SettingsPage() {
   const weightUnit = session.user.weightUnit === "lbs" ? "lbs" : "kg";
 
   return (
-    <div className="container flex flex-col gap-6 p-4 items-center w-full max-w-md mx-auto">
+    <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
       <div className="w-full">
         <h1 className="font-bold text-2xl">Settings</h1>
         <p className="text-muted-foreground text-sm">
