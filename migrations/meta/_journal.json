@@ -43,6 +43,13 @@
       "when": 1789601952267,
       "tag": "0005_small_roland_deschain",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789605601990,
+      "tag": "0006_past_warhawk",
+      "breakpoints": true
     }
   ]
 }

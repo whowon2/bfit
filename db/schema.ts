@@ -122,26 +122,35 @@ export const userProfile = pgTable("user_profile", {
     .notNull(),
 });
 
-export const calorieLog = pgTable("calorie_log", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+export const calorieLog = pgTable(
+  "calorie_log",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
 
-  date: timestamp("date").defaultNow().notNull(),
-  targetCalories: decimal("target_calories", {
-    precision: 6,
-    scale: 0,
-  }).notNull(),
-  actualCalories: decimal("actual_calories", { precision: 6, scale: 0 }), // optional
-  phase: text("phase").$type<"cut" | "bulk" | "maintain">().default("maintain"),
+    date: timestamp("date").defaultNow().notNull(),
+    targetCalories: decimal("target_calories", {
+      precision: 6,
+      scale: 0,
+    }),
+    actualCalories: decimal("actual_calories", { precision: 6, scale: 0 }), // optional
+    proteinG: decimal("protein_g", { precision: 6, scale: 1 }),
+    carbsG: decimal("carbs_g", { precision: 6, scale: 1 }),
+    fatG: decimal("fat_g", { precision: 6, scale: 1 }),
+    phase: text("phase")
+      .$type<"cut" | "bulk" | "maintain">()
+      .default("maintain"),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [unique().on(table.userId, table.date)],
+);
 
 export type ChangedFields = Record<string, { old: unknown; new: unknown }>;
 
@@ -167,3 +176,4 @@ export const profileHistory = pgTable("profile_history", {
 export type Weight = typeof weight.$inferSelect;
 export type Profile = typeof userProfile.$inferSelect;
 export type ProfileHistory = typeof profileHistory.$inferSelect;
+export type CalorieLog = typeof calorieLog.$inferSelect;

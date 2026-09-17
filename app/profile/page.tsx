@@ -6,6 +6,7 @@ import {
   getProfile,
   getProfileHistory,
 } from "@/actions/weight";
+import { ImportNutritionButton } from "@/components/import-nutrition";
 import {
   Card,
   CardContent,
@@ -133,6 +134,18 @@ export default async function ProfilePage() {
             weightKg={weightKg}
             currentBodyFat={currentBodyFat}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Nutrition data</CardTitle>
+          <CardDescription>
+            Import your daily calories/macros from a MyFitnessPal export.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ImportNutritionButton session={session} />
         </CardContent>
       </Card>
 
