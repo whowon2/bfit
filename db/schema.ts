@@ -3,6 +3,7 @@ import {
   date,
   decimal,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -142,5 +143,27 @@ export const calorieLog = pgTable("calorie_log", {
     .notNull(),
 });
 
+export type ChangedFields = Record<string, { old: unknown; new: unknown }>;
+
+export type CalcSnapshot = {
+  bmr: number | null;
+  tdee: number | null;
+  dailyCalorieChange: number | null;
+  targetCalories: number | null;
+  macros: { proteinG: number; carbsG: number; fatG: number } | null;
+};
+
+export const profileHistory = pgTable("profile_history", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  changedFields: jsonb("changed_fields").$type<ChangedFields>().notNull(),
+  calcBefore: jsonb("calc_before").$type<CalcSnapshot | null>(),
+  calcAfter: jsonb("calc_after").$type<CalcSnapshot>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Weight = typeof weight.$inferSelect;
 export type Profile = typeof userProfile.$inferSelect;
+export type ProfileHistory = typeof profileHistory.$inferSelect;

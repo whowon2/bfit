@@ -6,14 +6,13 @@ import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 import { createProfile } from "@/actions/weight";
+import { FieldInfo } from "@/components/field-info";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,26 +33,17 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import type { Session } from "@/lib/auth-client";
+import { computeCalcSnapshot } from "@/lib/nutrition";
+import {
+  type ProfileFormValues,
+  profileFormSchema,
+} from "@/lib/profile-schema";
 import { cn } from "@/lib/utils";
-
-export const formSchema = z.object({
-  birthDate: z.date(),
-  sex: z.enum(["male", "female"]),
-  height: z.number().min(100).max(300),
-  activityLevel: z.enum(["sedentary", "light", "moderate", "high"]),
-  goal: z.enum(["cut", "bulk", "maintain"]),
-  targetBodyFat: z.number().min(3).max(60),
-  targetWeeks: z.number().min(1).max(104),
-  carbRatioPercent: z.number().min(0).max(100),
-  proteinPerKg: z.number().min(1).max(3),
-  maintenanceCalories: z.number().min(0).max(10000),
-  currentCalories: z.number().min(0).max(10000),
-});
 
 export function CreateProfileForm({ session }: { session: Session }) {
   const router = useRouter();
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema) as Resolver<z.infer<typeof formSchema>>,
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema) as Resolver<ProfileFormValues>,
     defaultValues: {
       birthDate: new Date("02/02/2002"),
       sex: "male",
@@ -69,7 +59,24 @@ export function CreateProfileForm({ session }: { session: Session }) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const watched = form.watch();
+
+  const preview = computeCalcSnapshot({
+    profile: {
+      birthDate: watched.birthDate.toISOString(),
+      sex: watched.sex,
+      height: watched.height.toString(),
+      activityLevel: watched.activityLevel,
+      targetBodyFat: watched.targetBodyFat.toString(),
+      targetWeeks: watched.targetWeeks,
+      proteinPerKg: watched.proteinPerKg.toString(),
+      carbRatioPercent: watched.carbRatioPercent,
+    },
+    weightKg: null,
+    currentBodyFat: null,
+  });
+
+  async function onSubmit(values: ProfileFormValues) {
     try {
       await createProfile(session.user.id, values);
       toast.success("Profile saved.");
@@ -83,242 +90,279 @@ export function CreateProfileForm({ session }: { session: Session }) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col gap-4 max-w-md w-full"
+        className="flex flex-col gap-6 w-full max-w-lg"
       >
-        {/* Birth Date */}
-        <FormField
-          control={form.control}
-          name="birthDate"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date of birth</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
+        <div className="flex flex-col gap-4">
+          <h3 className="border-b pb-1 font-semibold text-sm">Personal info</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Birth Date */}
+            <FormField
+              control={form.control}
+              name="birthDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date of birth</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground",
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        captionLayout="dropdown"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Sex */}
+            <FormField
+              control={form.control}
+              name="sex"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sex</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Height */}
+            <FormField
+              control={form.control}
+              name="height"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Height (cm)</FormLabel>
                   <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground",
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
+                    <Input
+                      type="number"
+                      placeholder="e.g., 175"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
                   </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
-                    }
-                    captionLayout="dropdown"
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="border-b pb-1 font-semibold text-sm">
+            Goals & targets
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Activity Level */}
+            <FormField
+              control={form.control}
+              name="activityLevel"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldInfo
+                    label="Activity Level"
+                    info="Scales BMR into TDEE (maintenance calories): Sedentary ×1.2, Lightly active ×1.375, Moderately active ×1.55 (exercise 3-5 days/week), Highly active ×1.725. Higher activity = higher maintenance calories."
                   />
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                Your date of birth is used to calculate your age.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select activity level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="sedentary">Sedentary</SelectItem>
+                      <SelectItem value="light">Lightly active</SelectItem>
+                      <SelectItem value="moderate">
+                        Moderately active
+                      </SelectItem>
+                      <SelectItem value="high">Highly active</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Sex */}
-        <FormField
-          control={form.control}
-          name="sex"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Sex</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Goal */}
+            <FormField
+              control={form.control}
+              name="goal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Goal</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select goal" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="cut">Cut</SelectItem>
+                      <SelectItem value="bulk">Bulk</SelectItem>
+                      <SelectItem value="maintain">Maintain</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Height */}
-        <FormField
-          control={form.control}
-          name="height"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Height (cm)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  placeholder="e.g., 175"
-                  {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Target Body Fat */}
+            <FormField
+              control={form.control}
+              name="targetBodyFat"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldInfo
+                    label="Target Body Fat (%)"
+                    info="Combined with your timeframe below, this sets the daily calorie surplus/deficit needed to reach it (assumes lean mass stays constant)."
+                  />
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 15"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Activity Level */}
-        <FormField
-          control={form.control}
-          name="activityLevel"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Activity Level</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select activity level" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="sedentary">Sedentary</SelectItem>
-                  <SelectItem value="light">Lightly active</SelectItem>
-                  <SelectItem value="moderate">Moderately active</SelectItem>
-                  <SelectItem value="high">Highly active</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Target Weeks */}
+            <FormField
+              control={form.control}
+              name="targetWeeks"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldInfo
+                    label="Timeframe (weeks)"
+                    info="How many weeks to reach your target body fat %. Shorter timeframes mean a larger daily calorie deficit/surplus."
+                  />
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="1"
+                      placeholder="e.g., 12"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-        {/* Goal */}
-        <FormField
-          control={form.control}
-          name="goal"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Goal</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select goal" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="cut">Cut</SelectItem>
-                  <SelectItem value="bulk">Bulk</SelectItem>
-                  <SelectItem value="maintain">Maintain</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Protein per kg */}
+            <FormField
+              control={form.control}
+              name="proteinPerKg"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldInfo
+                    label={`Protein target — ${field.value}g/kg`}
+                    info="Grams of protein per kg bodyweight. Typical range: 1-3g/kg. Protein calories are subtracted first; the rest of your target calories are split into carbs/fat below."
+                  />
+                  <FormControl>
+                    <Slider
+                      value={[field.value]}
+                      onValueChange={([v]) => field.onChange(v)}
+                      min={1}
+                      max={3}
+                      step={0.1}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Target Body Fat */}
-        <FormField
-          control={form.control}
-          name="targetBodyFat"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Target Body Fat (%)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="e.g., 15"
-                  {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Carb/Fat Split */}
+            <FormField
+              control={form.control}
+              name="carbRatioPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FieldInfo
+                    label={`Carb / Fat split — Carbs ${field.value}% · Fat ${100 - field.value}%`}
+                    info="After protein is subtracted, remaining calories are split between carbs and fat using this ratio (e.g. 50% means half of the leftover calories become carbs, half fat)."
+                  />
+                  <FormControl>
+                    <Slider
+                      value={[field.value]}
+                      onValueChange={([v]) => field.onChange(v)}
+                      min={0}
+                      max={100}
+                      step={5}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
 
-        {/* Target Weeks */}
-        <FormField
-          control={form.control}
-          name="targetWeeks"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Timeframe (weeks)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="1"
-                  placeholder="e.g., 12"
-                  {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              </FormControl>
-              <FormDescription>
-                How many weeks to reach your target body fat %.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Protein per kg */}
-        <FormField
-          control={form.control}
-          name="proteinPerKg"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Protein target — {field.value}g/kg</FormLabel>
-              <FormControl>
-                <Slider
-                  value={[field.value]}
-                  onValueChange={([v]) => field.onChange(v)}
-                  min={1}
-                  max={3}
-                  step={0.1}
-                />
-              </FormControl>
-              <FormDescription>
-                Grams of protein per kg bodyweight. Typical range: 1-3g/kg.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Carb/Fat Split */}
-        <FormField
-          control={form.control}
-          name="carbRatioPercent"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Carb / Fat split — Carbs {field.value}% · Fat{" "}
-                {100 - field.value}%
-              </FormLabel>
-              <FormControl>
-                <Slider
-                  value={[field.value]}
-                  onValueChange={([v]) => field.onChange(v)}
-                  min={0}
-                  max={100}
-                  step={5}
-                />
-              </FormControl>
-              <FormDescription>
-                Remaining calories after protein split between carbs and fat
-                using this ratio.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="flex flex-col gap-1 rounded-md border p-3 text-sm">
+          <p className="font-medium">Computed from your inputs</p>
+          <p className="text-muted-foreground">
+            BMR: {preview.bmr ?? "—"} kcal/day · TDEE: {preview.tdee ?? "—"}{" "}
+            kcal/day
+          </p>
+          <p className="text-muted-foreground">
+            Log a weight entry after creating your profile to see full macro
+            targets.
+          </p>
+        </div>
 
         <Button
           type="submit"

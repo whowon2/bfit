@@ -1,11 +1,10 @@
-import { differenceInYears } from "date-fns";
-import { Info } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   getLatestBodyFat,
   getLatestWeight,
   getProfile,
+  getProfileHistory,
 } from "@/actions/weight";
 import {
   Card,
@@ -14,14 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import type { ChangedFields } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { calcBmr, calcDailyCalorieChange, calcTdee } from "@/lib/nutrition";
+import { cn } from "@/lib/utils";
 import { CreateProfileForm } from "./create-form";
+import { UpdateProfileForm } from "./update-form";
 
 const SEX_LABELS: Record<string, string> = {
   male: "Male",
@@ -42,6 +38,62 @@ const GOAL_LABELS: Record<string, string> = {
   maintain: "Maintain",
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  birthDate: "Date of birth",
+  sex: "Sex",
+  height: "Height",
+  activityLevel: "Activity level",
+  goal: "Goal",
+  targetBodyFat: "Target body fat",
+  targetWeeks: "Timeframe",
+  carbRatioPercent: "Carb ratio",
+  proteinPerKg: "Protein target",
+  maintenanceCalories: "Maintenance calories",
+  currentCalories: "Current calories",
+};
+
+const NUMERIC_FIELDS = new Set([
+  "height",
+  "targetBodyFat",
+  "targetWeeks",
+  "carbRatioPercent",
+  "proteinPerKg",
+  "maintenanceCalories",
+  "currentCalories",
+]);
+
+function isDecrease(field: string, oldValue: unknown, newValue: unknown) {
+  if (!NUMERIC_FIELDS.has(field)) return false;
+  if (oldValue === null || oldValue === undefined) return false;
+  return Number(newValue) < Number(oldValue);
+}
+
+function formatFieldValue(field: string, value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  switch (field) {
+    case "sex":
+      return SEX_LABELS[value as string] ?? String(value);
+    case "activityLevel":
+      return ACTIVITY_LABELS[value as string] ?? String(value);
+    case "goal":
+      return GOAL_LABELS[value as string] ?? String(value);
+    case "birthDate":
+      return new Date(value as string).toLocaleDateString();
+    case "height":
+      return `${Number(value)} cm`;
+    case "targetBodyFat":
+      return `${Number(value)}%`;
+    case "targetWeeks":
+      return `${value} wks`;
+    case "carbRatioPercent":
+      return `${value}%`;
+    case "proteinPerKg":
+      return `${Number(value)} g/kg`;
+    default:
+      return String(value);
+  }
+}
+
 export default async function ProfilePage() {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -57,132 +109,119 @@ export default async function ProfilePage() {
     return <CreateProfileForm session={session} />;
   }
 
-  const age = differenceInYears(new Date(), new Date(profile.birthDate));
-
   const latestWeight = await getLatestWeight(session.user.id);
   const latestBodyFat = await getLatestBodyFat(session.user.id);
 
-  let bmr: number | null = null;
-  if (profile.height && latestWeight) {
-    bmr = calcBmr({
-      weightKg: Number(latestWeight.value),
-      heightCm: Number(profile.height),
-      age,
-      sex: profile.sex,
-    });
-  }
+  const weightKg = latestWeight ? Number(latestWeight.value) : null;
+  const currentBodyFat = latestBodyFat?.bodyFatPercent
+    ? Number(latestBodyFat.bodyFatPercent)
+    : null;
 
-  const tdee =
-    bmr !== null
-      ? calcTdee({ bmr, activityLevel: profile.activityLevel })
-      : null;
-
-  // Uses latest weight for current mass, latest known BF% (may be an older
-  // entry than the latest weight log) as the current body fat reading.
-  let dailyCalorieChange: number | null = null;
-  if (
-    profile.targetBodyFat &&
-    profile.targetWeeks &&
-    latestWeight &&
-    latestBodyFat
-  ) {
-    dailyCalorieChange = calcDailyCalorieChange({
-      weightKg: Number(latestWeight.value),
-      currentBodyFat: Number(latestBodyFat.bodyFatPercent),
-      targetBodyFat: Number(profile.targetBodyFat),
-      targetWeeks: profile.targetWeeks,
-    });
-  }
-
-  const stats = [
-    { label: "Age", value: `${age} yrs` },
-    {
-      label: "Sex",
-      value: profile.sex ? SEX_LABELS[profile.sex] : "—",
-    },
-    {
-      label: "Height",
-      value: profile.height ? `${Number(profile.height)} cm` : "—",
-    },
-    {
-      label: "Activity level",
-      value: profile.activityLevel
-        ? ACTIVITY_LABELS[profile.activityLevel]
-        : "—",
-    },
-    {
-      label: "Goal",
-      value: profile.goal ? GOAL_LABELS[profile.goal] : "—",
-    },
-    {
-      label: "Body fat %",
-      value: latestBodyFat?.bodyFatPercent
-        ? `${Number(latestBodyFat.bodyFatPercent)}%`
-        : "—",
-    },
-    {
-      label: "Target body fat",
-      value: profile.targetBodyFat
-        ? `${Number(profile.targetBodyFat)}% in ${profile.targetWeeks ?? "—"} wks`
-        : "—",
-    },
-    {
-      label: "BMR",
-      value: bmr ? `${bmr} kcal/day` : "—",
-      info: "Mifflin-St Jeor equation: 10×weight(kg) + 6.25×height(cm) − 5×age + sex offset (+5 male, −161 female). This is basal rate at rest — activity level doesn't change it, it scales BMR into TDEE instead.",
-    },
-    {
-      label: "TDEE",
-      value: tdee ? `${tdee} kcal/day` : "—",
-      info: "BMR × activity multiplier (sedentary 1.2, light 1.375, moderate 1.55, high 1.725). This is your maintenance calories — the baseline used for cut/bulk targets.",
-    },
-    {
-      label:
-        dailyCalorieChange !== null && dailyCalorieChange > 0
-          ? "Daily surplus"
-          : "Daily deficit",
-      value:
-        dailyCalorieChange !== null
-          ? `${dailyCalorieChange > 0 ? "+" : ""}${dailyCalorieChange} kcal/day`
-          : "—",
-    },
-  ];
+  const history = await getProfileHistory(session.user.id);
 
   return (
-    <div className="container flex flex-col gap-6 p-4 items-center w-full max-w-md mx-auto">
+    <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
       <div className="w-full">
         <h1 className="font-bold text-2xl">Profile</h1>
-        <p className="text-muted-foreground text-sm">
-          Your details and goals used to personalize calculations.
-        </p>
       </div>
 
       <Card className="w-full">
+        <CardContent>
+          <UpdateProfileForm
+            session={session}
+            profile={profile}
+            weightKg={weightKg}
+            currentBodyFat={currentBodyFat}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Overview</CardTitle>
-          <CardDescription>Signed in as {session.user.email}</CardDescription>
+          <CardTitle>History</CardTitle>
+          <CardDescription>Past changes and their impact.</CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            {stats.map((stat) => (
-              <div key={stat.label} className="flex flex-col gap-0.5">
-                <dt className="text-muted-foreground text-xs flex items-center gap-1">
-                  {stat.label}
-                  {stat.info ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="size-3 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-64">
-                        {stat.info}
-                      </TooltipContent>
-                    </Tooltip>
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">
+              {history.length} change{history.length === 1 ? "" : "s"}
+            </summary>
+            <ul className="mt-3 flex flex-col gap-4">
+              {history.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex flex-col gap-1 border-t pt-3 text-sm"
+                >
+                  <p className="text-muted-foreground text-xs">
+                    {new Date(entry.createdAt).toLocaleString()}
+                  </p>
+                  <ul className="flex flex-col gap-0.5">
+                    {Object.entries(entry.changedFields as ChangedFields).map(
+                      ([field, { old, new: newValue }]) => (
+                        <li key={field}>
+                          <span className="text-muted-foreground">
+                            {FIELD_LABELS[field] ?? field}:
+                          </span>{" "}
+                          <span className="text-muted-foreground line-through">
+                            {formatFieldValue(field, old)}
+                          </span>{" "}
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              isDecrease(field, old, newValue)
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-blue-600 dark:text-blue-400",
+                            )}
+                          >
+                            → {formatFieldValue(field, newValue)}
+                          </span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                  {entry.calcBefore &&
+                  entry.calcBefore.tdee !== entry.calcAfter.tdee ? (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">TDEE </span>
+                      <span className="text-muted-foreground line-through">
+                        {entry.calcBefore.tdee ?? "—"}
+                      </span>{" "}
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          (entry.calcAfter.tdee ?? 0) <
+                            (entry.calcBefore.tdee ?? 0)
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-blue-600 dark:text-blue-400",
+                        )}
+                      >
+                        → {entry.calcAfter.tdee ?? "—"} kcal/day
+                      </span>
+                    </p>
                   ) : null}
-                </dt>
-                <dd className="font-medium text-sm">{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
+                  {entry.calcBefore &&
+                  entry.calcBefore.targetCalories !==
+                    entry.calcAfter.targetCalories ? (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">Target </span>
+                      <span className="text-muted-foreground line-through">
+                        {entry.calcBefore.targetCalories ?? "—"}
+                      </span>{" "}
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        → {entry.calcAfter.targetCalories ?? "—"} kcal/day
+                      </span>
+                    </p>
+                  ) : null}
+                  {!entry.calcBefore ? (
+                    <p className="text-muted-foreground text-xs">
+                      Initial TDEE {entry.calcAfter.tdee ?? "—"} kcal/day,
+                      target {entry.calcAfter.targetCalories ?? "—"} kcal/day
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </details>
         </CardContent>
       </Card>
     </div>

@@ -1,6 +1,6 @@
 {
-  "id": "018a5c24-7d06-4cfb-8c40-32f9030331b9",
-  "prevId": "8472e31b-9ba9-4297-83c4-5a84c71d948a",
+  "id": "3dbe9aca-6526-4385-888f-6a0cd8dc652a",
+  "prevId": "599179e4-4712-4b48-aa74-b919bb49e71b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -168,6 +168,66 @@
         "calorie_log_user_id_user_id_fk": {
           "name": "calorie_log_user_id_user_id_fk",
           "tableFrom": "calorie_log",
+          "tableTo": "user",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.profile_history": {
+      "name": "profile_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_fields": {
+          "name": "changed_fields",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calc_before": {
+          "name": "calc_before",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calc_after": {
+          "name": "calc_after",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "profile_history_user_id_user_id_fk": {
+          "name": "profile_history_user_id_user_id_fk",
+          "tableFrom": "profile_history",
           "tableTo": "user",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
@@ -395,6 +455,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": 50
+        },
+        "protein_per_kg": {
+          "name": "protein_per_kg",
+          "type": "numeric(2, 1)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'1.8'"
         },
         "maintenance_calories": {
           "name": "maintenance_calories",

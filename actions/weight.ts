@@ -3,7 +3,10 @@
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/db/drizzle";
-import { userProfile, weight } from "@/db/schema";
+import type { ChangedFields } from "@/db/schema";
+import { profileHistory, userProfile, weight } from "@/db/schema";
+import { computeCalcSnapshot } from "@/lib/nutrition";
+import type { ProfileFormValues } from "@/lib/profile-schema";
 
 export async function getProfile(userId: string) {
   const profile = await db
@@ -14,19 +17,132 @@ export async function getProfile(userId: string) {
   return profile[0];
 }
 
-export async function createProfile(userId: string, data: any) {
-  await db.insert(userProfile).values({
-    userId: userId,
-    ...data,
+function toDbValues(data: ProfileFormValues) {
+  return {
+    birthDate: data.birthDate.toISOString().slice(0, 10),
+    sex: data.sex,
+    activityLevel: data.activityLevel,
+    goal: data.goal,
+    targetWeeks: data.targetWeeks,
+    carbRatioPercent: data.carbRatioPercent,
+    height: data.height.toString(),
+    targetBodyFat: data.targetBodyFat.toString(),
+    proteinPerKg: data.proteinPerKg.toString(),
+    maintenanceCalories: data.maintenanceCalories.toString(),
+    currentCalories: data.currentCalories.toString(),
+  };
+}
+
+export async function createProfile(userId: string, data: ProfileFormValues) {
+  const [profile] = await db
+    .insert(userProfile)
+    .values({
+      userId,
+      ...toDbValues(data),
+    })
+    .returning();
+
+  const weightKg = (await getLatestWeight(userId))?.value;
+  const currentBodyFat = (await getLatestBodyFat(userId))?.bodyFatPercent;
+
+  const calcAfter = computeCalcSnapshot({
+    profile,
+    weightKg: weightKg != null ? Number(weightKg) : null,
+    currentBodyFat: currentBodyFat != null ? Number(currentBodyFat) : null,
   });
+
+  const changedFields: ChangedFields = Object.fromEntries(
+    Object.entries(toDbValues(data)).map(([key, value]) => [
+      key,
+      { old: null, new: value },
+    ]),
+  );
+
+  await db.insert(profileHistory).values({
+    userId,
+    changedFields,
+    calcBefore: null,
+    calcAfter,
+  });
+
   revalidatePath("/dashboard");
   revalidatePath("/profile");
 }
 
-export async function updateProfile(userId: string, data: any) {
-  await db.update(userProfile).set(data).where(eq(userProfile.userId, userId));
+export async function updateProfile(userId: string, data: ProfileFormValues) {
+  const before = await getProfile(userId);
+
+  const weightKg = (await getLatestWeight(userId))?.value;
+  const currentBodyFat = (await getLatestBodyFat(userId))?.bodyFatPercent;
+  const weightKgNum = weightKg != null ? Number(weightKg) : null;
+  const currentBodyFatNum =
+    currentBodyFat != null ? Number(currentBodyFat) : null;
+
+  const calcBefore = before
+    ? computeCalcSnapshot({
+        profile: before,
+        weightKg: weightKgNum,
+        currentBodyFat: currentBodyFatNum,
+      })
+    : null;
+
+  const [after] = await db
+    .update(userProfile)
+    .set(toDbValues(data))
+    .where(eq(userProfile.userId, userId))
+    .returning();
+
+  const calcAfter = computeCalcSnapshot({
+    profile: after,
+    weightKg: weightKgNum,
+    currentBodyFat: currentBodyFatNum,
+  });
+
+  const NUMERIC_FIELDS = new Set([
+    "height",
+    "targetBodyFat",
+    "proteinPerKg",
+    "maintenanceCalories",
+    "currentCalories",
+  ]);
+
+  const beforeDb = before as Record<string, unknown> | undefined;
+  const afterDb = toDbValues(data) as Record<string, unknown>;
+  const changedFields: ChangedFields = Object.fromEntries(
+    Object.entries(afterDb)
+      .filter(([key, value]) => {
+        const oldValue = beforeDb?.[key];
+        if (NUMERIC_FIELDS.has(key)) {
+          return Number(oldValue) !== Number(value);
+        }
+        return oldValue !== value;
+      })
+      .map(([key, value]) => [
+        key,
+        { old: beforeDb?.[key] ?? null, new: value },
+      ]),
+  );
+
+  if (Object.keys(changedFields).length > 0) {
+    await db.insert(profileHistory).values({
+      userId,
+      changedFields,
+      calcBefore,
+      calcAfter,
+    });
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/profile");
+}
+
+export async function getProfileHistory(userId: string, limit = 10) {
+  return await db
+    .select()
+    .from(profileHistory)
+    .where(eq(profileHistory.userId, userId))
+    .orderBy(desc(profileHistory.createdAt))
+    .limit(limit);
 }
 
 // 🔹 Get all weight entries for a user

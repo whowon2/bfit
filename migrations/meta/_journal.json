@@ -36,6 +36,13 @@
       "when": 1782963159309,
       "tag": "0004_faulty_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789601952267,
+      "tag": "0005_small_roland_deschain",
+      "breakpoints": true
     }
   ]
 }

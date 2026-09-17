@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import Sidebar from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,22 +35,24 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex w-full flex-col bg-background font-sans md:flex-row`}
         suppressHydrationWarning
       >
-        <Sidebar />
-        <div className="flex min-h-screen w-full flex-col items-center justify-between">
-          {children}
-          <footer className="container flex w-full items-center justify-center gap-1 p-4 text-muted-foreground text-sm">
-            Made by Whowon ·{" "}
-            <Link
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              GitHub
-            </Link>
-          </footer>
-        </div>
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Sidebar />
+          <div className="flex min-h-screen w-full flex-col items-center justify-between">
+            {children}
+            <footer className="container flex w-full items-center justify-center gap-1 p-4 text-muted-foreground text-sm">
+              Made by Whowon ·{" "}
+              <Link
+                href={REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                GitHub
+              </Link>
+            </footer>
+          </div>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

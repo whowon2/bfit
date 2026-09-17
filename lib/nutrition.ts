@@ -1,4 +1,5 @@
-import type { Profile } from "@/db/schema";
+import { differenceInYears } from "date-fns";
+import type { CalcSnapshot, Profile } from "@/db/schema";
 
 export function calcBmr({
   weightKg,
@@ -94,4 +95,74 @@ export function calcMacros({
   const carbsG = Math.round((remainingCal * (carbRatioPercent / 100)) / 4);
   const fatG = Math.round((remainingCal * (1 - carbRatioPercent / 100)) / 9);
   return { proteinG, carbsG, fatG };
+}
+
+// Full BMR/TDEE/target-calorie/macro snapshot for a given profile + latest
+// body measurements. Shared by preview UI and profile-history recording so
+// both stay in sync with the same math.
+export function computeCalcSnapshot({
+  profile,
+  weightKg,
+  currentBodyFat,
+}: {
+  profile: Pick<
+    Profile,
+    | "birthDate"
+    | "sex"
+    | "height"
+    | "activityLevel"
+    | "targetBodyFat"
+    | "targetWeeks"
+    | "proteinPerKg"
+    | "carbRatioPercent"
+  >;
+  weightKg: number | null;
+  currentBodyFat: number | null;
+}): CalcSnapshot {
+  const age = differenceInYears(new Date(), new Date(profile.birthDate));
+  const heightCm = profile.height ? Number(profile.height) : null;
+
+  const bmr =
+    heightCm !== null && weightKg !== null
+      ? calcBmr({ weightKg, heightCm, age, sex: profile.sex })
+      : null;
+
+  const tdee =
+    bmr !== null
+      ? calcTdee({ bmr, activityLevel: profile.activityLevel })
+      : null;
+
+  const targetBodyFat = profile.targetBodyFat
+    ? Number(profile.targetBodyFat)
+    : null;
+
+  const dailyCalorieChange =
+    weightKg !== null &&
+    currentBodyFat !== null &&
+    targetBodyFat !== null &&
+    profile.targetWeeks
+      ? calcDailyCalorieChange({
+          weightKg,
+          currentBodyFat,
+          targetBodyFat,
+          targetWeeks: profile.targetWeeks,
+        })
+      : null;
+
+  const targetCalories =
+    tdee !== null ? tdee + (dailyCalorieChange ?? 0) : null;
+
+  const macros =
+    weightKg !== null && targetCalories !== null
+      ? calcMacros({
+          weightKg,
+          targetCalories,
+          proteinPerKg: profile.proteinPerKg
+            ? Number(profile.proteinPerKg)
+            : 1.8,
+          carbRatioPercent: profile.carbRatioPercent ?? 50,
+        })
+      : null;
+
+  return { bmr, tdee, dailyCalorieChange, targetCalories, macros };
 }

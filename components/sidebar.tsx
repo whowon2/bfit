@@ -1,11 +1,4 @@
-import {
-  Dumbbell,
-  LayoutDashboard,
-  LogIn,
-  Settings,
-  User,
-  Utensils,
-} from "lucide-react";
+import { Dumbbell, LayoutDashboard, LogIn, Settings, User } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
@@ -59,19 +52,6 @@ export default async function Sidebar() {
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <p>Profile</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/nutrition">
-                  <Button variant="ghost" size="icon">
-                    <Utensils />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Nutrition</p>
               </TooltipContent>
             </Tooltip>
 
