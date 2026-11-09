@@ -438,7 +438,7 @@ export function UpdateProfileForm({
                 Targets use your observed maintenance (from logged intake and
                 weight change)
                 {preview.maintenance.source === "blended"
-                  ? ", blended with the TDEE formula by confidence"
+                  ? ", blended with the TDEE formula by data coverage"
                   : ""}
                 . See Maintenance below.
               </p>

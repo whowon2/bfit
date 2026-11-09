@@ -8,7 +8,7 @@
 // (blend by confidence) lives in `chooseMaintenance` in lib/nutrition.ts.
 
 import type { MaintenanceChoice } from "@/lib/nutrition";
-import { KCAL_PER_KG } from "@/lib/nutrition";
+import { ADAPTIVE_FULL_CONFIDENCE, KCAL_PER_KG } from "@/lib/nutrition";
 import { addDays, type DayPoint, dayDiff, weeklyRate } from "@/lib/trend";
 import { kgToUnit, type WeightUnit } from "@/lib/units";
 
@@ -258,6 +258,15 @@ export function observedDetailText(
   );
 }
 
+/**
+ * User-facing label for the observed-estimate score. It measures how complete
+ * the data is (window length, logged days, weigh-ins), not statistical
+ * confidence, so it is shown as "data coverage".
+ */
+export function formatCoverage(score: number): string {
+  return `${Math.round(score * 100)}% data coverage`;
+}
+
 /** Tooltip text for the maintenance in use: what drives it and why. */
 export function explainMaintenance(
   choice: MaintenanceChoice,
@@ -270,20 +279,18 @@ export function explainMaintenance(
       : "";
   if (!observed) return formula || "Log weights and calories to estimate.";
   const detail = observedDetailText(observed, unit);
-  const confidence =
-    choice.confidence !== null
-      ? `${Math.round(choice.confidence * 100)}% confidence`
-      : "";
+  const coverage =
+    choice.confidence !== null ? formatCoverage(choice.confidence) : "";
   switch (choice.source) {
     case "adaptive":
-      return [detail, confidence && `Adaptive, ${confidence}.`]
+      return [detail, coverage && `Adaptive, ${coverage}.`]
         .filter(Boolean)
         .join(" ");
     case "blended":
       return [
         detail,
         formula,
-        `Not enough data for full confidence (${confidence}), so the two are blended by confidence.`,
+        `Below ${Math.round(ADAPTIVE_FULL_CONFIDENCE * 100)}% data coverage (${coverage}), so the two are blended by coverage.`,
       ]
         .filter(Boolean)
         .join(" ");

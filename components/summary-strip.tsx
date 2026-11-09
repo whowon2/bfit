@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { CalcSnapshot } from "@/db/schema";
+import { formatCoverage } from "@/lib/adaptive-tdee";
 import { type WindowPreset, windowLabel } from "@/lib/chart-window";
 import { parseDay } from "@/lib/dates";
 import type { MaintenanceSource } from "@/lib/nutrition";
@@ -341,7 +342,7 @@ export function SummaryStrip({
             ? "Log a weight to estimate"
             : maintenance.confidence !== null &&
                 maintenance.source !== "formula"
-              ? `${MAINTENANCE_SUB[maintenance.source]} · ${Math.round(maintenance.confidence * 100)}% confidence`
+              ? `${MAINTENANCE_SUB[maintenance.source]} · ${formatCoverage(maintenance.confidence)}`
               : MAINTENANCE_SUB[maintenance.source]
         }
       />

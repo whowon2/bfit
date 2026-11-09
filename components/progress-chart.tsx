@@ -363,24 +363,53 @@ export function Chart({
     return bodyFatData.filter((p) => p.date >= cutoff);
   }, [bodyFatData, cutoff]);
 
+  // Only series that are toggled on (and have points in the window) feed the
+  // shared rows and the x-axis extent — otherwise e.g. a hidden monthly point
+  // on the 1st of the month stretches the axis. Recharts widens an explicit
+  // numeric domain to fit the data, so hidden series must be left out of the
+  // rows too, not just the domain. With nothing visible, fall back to all.
+  const shownSeries = useMemo(() => {
+    const all = {
+      trend: visibleTrendData,
+      daily: visibleData,
+      weekly: visibleWeeklyData,
+      monthly: visibleMonthlyData,
+      calories: visibleCalorieData,
+      bodyFat: visibleBodyFatData,
+    };
+    const shown = {
+      trend: visibleAvgs.has("trend") ? all.trend : [],
+      daily: visibleAvgs.has("daily") ? all.daily : [],
+      weekly: visibleAvgs.has("weekly") ? all.weekly : [],
+      monthly: visibleAvgs.has("monthly") ? all.monthly : [],
+      calories: showCalories ? all.calories : [],
+      bodyFat: showBodyFat ? all.bodyFat : [],
+    };
+    const anyShown = Object.values(shown).some((s) => s.length > 0);
+    return anyShown ? shown : all;
+  }, [
+    visibleAvgs,
+    showCalories,
+    showBodyFat,
+    visibleTrendData,
+    visibleData,
+    visibleWeeklyData,
+    visibleMonthlyData,
+    visibleCalorieData,
+    visibleBodyFatData,
+  ]);
+
   const chartData = useMemo(
     () =>
       mergeChartRows(
-        visibleTrendData,
-        visibleData,
-        visibleWeeklyData,
-        visibleMonthlyData,
-        visibleCalorieData,
-        visibleBodyFatData,
+        shownSeries.trend,
+        shownSeries.daily,
+        shownSeries.weekly,
+        shownSeries.monthly,
+        shownSeries.calories,
+        shownSeries.bodyFat,
       ),
-    [
-      visibleTrendData,
-      visibleData,
-      visibleWeeklyData,
-      visibleMonthlyData,
-      visibleCalorieData,
-      visibleBodyFatData,
-    ],
+    [shownSeries],
   );
 
   const hasIndicators =
@@ -388,22 +417,19 @@ export function Chart({
     (showBodyFat && visibleBodyFatData.length > 0);
 
   const xDomain = useMemo((): [number, number] | undefined => {
-    const dates = [
-      ...visibleData.map((p) => p.date),
-      ...visibleWeeklyData.map((p) => p.date),
-      ...visibleMonthlyData.map((p) => p.date),
-      ...visibleCalorieData.map((p) => p.date),
-      ...visibleBodyFatData.map((p) => p.date),
-    ];
+    const dates = Object.values(shownSeries).flatMap((s) =>
+      s.map((p) => p.date),
+    );
     if (dates.length === 0) return undefined;
     return [Math.min(...dates), Math.max(...dates)];
-  }, [
-    visibleData,
-    visibleWeeklyData,
-    visibleMonthlyData,
-    visibleCalorieData,
-    visibleBodyFatData,
-  ]);
+  }, [shownSeries]);
+
+  // Calorie axis from 0 to the visible max, rounded to nice steps.
+  const calorieAxis = useMemo(() => {
+    const values = shownSeries.calories.map((p) => p.calories);
+    if (values.length === 0) return null;
+    return niceDomain(0, Math.max(...values), 4);
+  }, [shownSeries]);
 
   // Weight axis bounds from the visible weight series, rounded to nice steps.
   const yAxis = useMemo(() => {
@@ -623,8 +649,9 @@ export function Chart({
                 tickLine={false}
                 axisLine={false}
                 width={44}
-                domain={[0, "dataMax"]}
-                tickCount={4}
+                domain={calorieAxis?.domain ?? [0, "auto"]}
+                ticks={calorieAxis?.ticks}
+                tickFormatter={(v: number) => v.toLocaleString()}
               />
               <YAxis
                 yAxisId="bodyFat"

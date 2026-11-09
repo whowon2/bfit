@@ -10,7 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { CalcSnapshot, ChangedFields } from "@/db/schema";
-import { explainMaintenance, observedReasonText } from "@/lib/adaptive-tdee";
+import {
+  explainMaintenance,
+  formatCoverage,
+  observedReasonText,
+} from "@/lib/adaptive-tdee";
 import { auth } from "@/lib/auth";
 import { isDayString, parseDay } from "@/lib/dates";
 import { chooseMaintenance, computeCalcSnapshot } from "@/lib/nutrition";
@@ -236,7 +240,7 @@ export default async function ProfilePage() {
               </dd>
               <dd className="text-muted-foreground text-xs">
                 {observed.ok
-                  ? `${Math.round(observed.confidence * 100)}% confidence`
+                  ? formatCoverage(observed.confidence)
                   : observedReasonText(observed)}
               </dd>
             </div>
