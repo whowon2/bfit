@@ -128,8 +128,8 @@ export function QuickLog({
         </CardAction>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <div className="flex items-end gap-2">
+        <form onSubmit={submit} className="@container flex flex-col gap-3">
+          <div className="flex flex-col gap-3 @sm:flex-row @sm:items-end @sm:gap-2">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <Label htmlFor={`${ids}-weight`}>Weight</Label>
               <div className="flex items-center gap-1">
@@ -154,7 +154,7 @@ export function QuickLog({
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={unit === "kg" ? "75.0" : "165.0"}
-                    className="h-12 pr-11 text-center font-semibold text-2xl tabular-nums md:text-2xl"
+                    className="h-12 pr-10 pl-2 text-center font-semibold text-2xl tabular-nums md:text-2xl"
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground text-sm">
                     {unit}
@@ -172,7 +172,7 @@ export function QuickLog({
                 </Button>
               </div>
             </div>
-            <div className="flex w-24 shrink-0 flex-col gap-1.5">
+            <div className="flex w-full shrink-0 flex-col gap-1.5 @sm:w-24">
               <Label htmlFor={`${ids}-bf`}>Body fat</Label>
               <div className="relative">
                 <Input
