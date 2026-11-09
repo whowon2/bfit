@@ -10,7 +10,7 @@ import {
   SummaryStrip,
 } from "@/components/summary-strip";
 import { WeightList } from "@/components/weight-list";
-import type { CalorieLog, Weight } from "@/db/schema";
+import type { Weight } from "@/db/schema";
 import { type WindowPreset, windowStartDay } from "@/lib/chart-window";
 import { ewmaTrend, weeklyRate, windowChange } from "@/lib/trend";
 import type { WeightUnit } from "@/lib/units";
@@ -22,7 +22,6 @@ import type { WeightUnit } from "@/lib/units";
  */
 export function DashboardView({
   weights,
-  calories,
   unit,
   timeZone,
   today,
@@ -33,7 +32,6 @@ export function DashboardView({
 }: {
   /** Newest first. */
   weights: Weight[];
-  calories: CalorieLog[];
   unit: WeightUnit;
   timeZone: string;
   today: string;
@@ -104,7 +102,6 @@ export function DashboardView({
         <div className="grid gap-4 lg:h-[600px] lg:grid-cols-[minmax(0,1fr)_20rem]">
           <Chart
             weights={weights}
-            calories={calories}
             trend={trend}
             unit={unit}
             windowPreset={windowPreset}

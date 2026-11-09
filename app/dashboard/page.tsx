@@ -76,7 +76,6 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       weights={weights}
-      calories={calories}
       unit={unit}
       timeZone={timeZone}
       today={today}

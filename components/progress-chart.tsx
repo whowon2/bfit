@@ -2,14 +2,7 @@
 
 import { format, startOfMonth, startOfWeek } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,7 +13,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import type { CalorieLog, Weight } from "@/db/schema";
+import type { Weight } from "@/db/schema";
 import {
   isWindowPreset,
   WINDOW_PRESETS,
@@ -41,15 +34,12 @@ const chartConfig = {
   daily: { label: "Daily", color: "var(--chart-1)" },
   weekly: { label: "Weekly", color: "var(--chart-2)" },
   monthly: { label: "Monthly", color: "var(--chart-3)" },
-  calories: { label: "Calories", color: "var(--chart-4)" },
-  bodyFat: { label: "Body fat", color: "var(--chart-5)" },
 } satisfies ChartConfig;
 
 const AVERAGES = ["trend", "daily", "weekly", "monthly"] as const;
 type Average = (typeof AVERAGES)[number];
 const DEFAULT_AVERAGES: Average[] = ["trend", "daily"];
 
-const SYNC_ID = "progress-chart";
 const PREFS_KEY = "bfit.progress-chart-prefs";
 // v2 added the trend series; older saved prefs get it switched on once.
 const PREFS_VERSION = 2;
@@ -58,8 +48,6 @@ interface ChartPrefs {
   version: number;
   windowPreset: WindowPreset;
   visibleAvgs: Average[];
-  showCalories: boolean;
-  showBodyFat: boolean;
 }
 
 function loadPrefs(): Partial<ChartPrefs> {
@@ -94,42 +82,23 @@ interface PeriodPoint {
   value: number;
 }
 
-interface CaloriePoint {
-  date: number;
-  calories: number;
-}
-
-interface BodyFatPoint {
-  date: number;
-  bodyFat: number;
-}
-
 interface ChartRow {
   date: number;
   trend?: number;
   daily?: number;
   weekly?: number;
   monthly?: number;
-  calories?: number;
-  bodyFat?: number;
 }
 
-// recharts' syncId links two charts by forwarding the hovered row's index
-// verbatim (it doesn't re-match by date) — and a chart's hover index space is
-// the *combined* set of x-positions across every series sharing its axis, so
-// a Line rendered with its own separate `data` override (like weekly/monthly
-// used to be) shifts that chart's index space out of step with a chart that
-// doesn't have those extra series. Merging every series — daily, weekly,
-// monthly, calories, body fat — into one row per calendar day keeps both
-// panels' index spaces identical. Every point's `date` is already a stored
-// calendar day (local midnight via parseDay), so rows key on it directly.
+// Every series is merged into one row per calendar day so all lines share a
+// single x index space (tooltip shows every visible series for the hovered
+// day). Every point's `date` is already a stored calendar day (local midnight
+// via parseDay), so rows key on it directly.
 function mergeChartRows(
   trendPoints: TrendPoint[],
   dailyPoints: DailyPoint[],
   weeklyPoints: PeriodPoint[],
   monthlyPoints: PeriodPoint[],
-  caloriePoints: CaloriePoint[],
-  bodyFatPoints: BodyFatPoint[],
 ): ChartRow[] {
   const rows = new Map<number, ChartRow>();
   const upsert = (key: number, fields: Partial<ChartRow>) => {
@@ -145,8 +114,6 @@ function mergeChartRows(
   for (const p of dailyPoints) upsert(p.date, { daily: p.daily });
   for (const p of weeklyPoints) upsert(p.date, { weekly: p.value });
   for (const p of monthlyPoints) upsert(p.date, { monthly: p.value });
-  for (const p of caloriePoints) upsert(p.date, { calories: p.calories });
-  for (const p of bodyFatPoints) upsert(p.date, { bodyFat: p.bodyFat });
 
   return [...rows.values()].sort((a, b) => a.date - b.date);
 }
@@ -155,8 +122,8 @@ function mergeChartRows(
 // category axis) — a week without a log just stretches that segment of the
 // line horizontally instead of connecting distant entries as if adjacent.
 function buildDailyPoints(weights: Weight[]): DailyPoint[] {
-  // Keyed by the stored calendar day (not the weigh-in time) so it merges
-  // cleanly with calorie/body-fat rows keyed by day — see mergeChartRows.
+  // Keyed by the stored calendar day (not the weigh-in time) — see
+  // mergeChartRows.
   return [...weights]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((w) => ({
@@ -212,38 +179,16 @@ function buildMonthlyPoints(
   return buildPeriodPoints(weights, startOfMonth, unit);
 }
 
-function buildCaloriePoints(entries: CalorieLog[]): CaloriePoint[] {
-  return entries
-    .filter((e) => e.actualCalories !== null)
-    .map((e) => ({
-      date: parseDay(e.date).getTime(),
-      calories: Number(e.actualCalories),
-    }))
-    .sort((a, b) => a.date - b.date);
-}
-
-function buildBodyFatPoints(weights: Weight[]): BodyFatPoint[] {
-  return weights
-    .filter((w) => w.bodyFatPercent !== null)
-    .map((w) => ({
-      date: parseDay(w.date).getTime(),
-      bodyFat: Number(w.bodyFatPercent),
-    }))
-    .sort((a, b) => a.date - b.date);
-}
-
 const formatTick = (value: number) => format(new Date(value), "MMM d");
 
 export function Chart({
   weights,
-  calories,
   trend,
   unit,
   windowPreset,
   onWindowPresetChange: setWindowPreset,
 }: {
   weights: Weight[];
-  calories: CalorieLog[];
   /** EWMA trend in kg, one point per logged day (see lib/trend.ts). */
   trend: DayPoint[];
   unit: WeightUnit;
@@ -254,8 +199,6 @@ export function Chart({
   const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
     new Set(DEFAULT_AVERAGES),
   );
-  const [showCalories, setShowCalories] = useState(true);
-  const [showBodyFat, setShowBodyFat] = useState(true);
   const hasLoadedPrefs = useRef(false);
 
   // Prefs are read from localStorage after mount (not in useState's
@@ -271,12 +214,6 @@ export function Chart({
       if ((prefs.version ?? 1) < PREFS_VERSION) saved.unshift("trend");
       setVisibleAvgs(new Set(saved));
     }
-    if (typeof prefs.showCalories === "boolean") {
-      setShowCalories(prefs.showCalories);
-    }
-    if (typeof prefs.showBodyFat === "boolean") {
-      setShowBodyFat(prefs.showBodyFat);
-    }
     hasLoadedPrefs.current = true;
     // setWindowPreset is the parent's (stable) state setter: runs once.
   }, [setWindowPreset]);
@@ -287,13 +224,11 @@ export function Chart({
       version: PREFS_VERSION,
       windowPreset,
       visibleAvgs: [...visibleAvgs],
-      showCalories,
-      showBodyFat,
     });
-  }, [windowPreset, visibleAvgs, showCalories, showBodyFat]);
+  }, [windowPreset, visibleAvgs]);
 
   // Stored values are kg; convert once so every weight series is in the
-  // user's unit. Body fat % is unit-independent.
+  // user's unit.
   const unitWeights = useMemo(
     () =>
       weights.map((w) => ({
@@ -320,8 +255,6 @@ export function Chart({
     () => buildMonthlyPoints(unitWeights, unit),
     [unitWeights, unit],
   );
-  const calorieData = useMemo(() => buildCaloriePoints(calories), [calories]);
-  const bodyFatData = useMemo(() => buildBodyFatPoints(weights), [weights]);
 
   // Same cutoff day as the dashboard summary's window change.
   const cutoff = useMemo(() => {
@@ -353,16 +286,6 @@ export function Chart({
     return monthlyData.filter((p) => p.date >= cutoff);
   }, [monthlyData, cutoff]);
 
-  const visibleCalorieData = useMemo(() => {
-    if (cutoff === null) return calorieData;
-    return calorieData.filter((p) => p.date >= cutoff);
-  }, [calorieData, cutoff]);
-
-  const visibleBodyFatData = useMemo(() => {
-    if (cutoff === null) return bodyFatData;
-    return bodyFatData.filter((p) => p.date >= cutoff);
-  }, [bodyFatData, cutoff]);
-
   // Only series that are toggled on (and have points in the window) feed the
   // shared rows and the x-axis extent — otherwise e.g. a hidden monthly point
   // on the 1st of the month stretches the axis. Recharts widens an explicit
@@ -374,29 +297,21 @@ export function Chart({
       daily: visibleData,
       weekly: visibleWeeklyData,
       monthly: visibleMonthlyData,
-      calories: visibleCalorieData,
-      bodyFat: visibleBodyFatData,
     };
     const shown = {
       trend: visibleAvgs.has("trend") ? all.trend : [],
       daily: visibleAvgs.has("daily") ? all.daily : [],
       weekly: visibleAvgs.has("weekly") ? all.weekly : [],
       monthly: visibleAvgs.has("monthly") ? all.monthly : [],
-      calories: showCalories ? all.calories : [],
-      bodyFat: showBodyFat ? all.bodyFat : [],
     };
     const anyShown = Object.values(shown).some((s) => s.length > 0);
     return anyShown ? shown : all;
   }, [
     visibleAvgs,
-    showCalories,
-    showBodyFat,
     visibleTrendData,
     visibleData,
     visibleWeeklyData,
     visibleMonthlyData,
-    visibleCalorieData,
-    visibleBodyFatData,
   ]);
 
   const chartData = useMemo(
@@ -406,15 +321,9 @@ export function Chart({
         shownSeries.daily,
         shownSeries.weekly,
         shownSeries.monthly,
-        shownSeries.calories,
-        shownSeries.bodyFat,
       ),
     [shownSeries],
   );
-
-  const hasIndicators =
-    (showCalories && visibleCalorieData.length > 0) ||
-    (showBodyFat && visibleBodyFatData.length > 0);
 
   const xDomain = useMemo((): [number, number] | undefined => {
     const dates = Object.values(shownSeries).flatMap((s) =>
@@ -422,13 +331,6 @@ export function Chart({
     );
     if (dates.length === 0) return undefined;
     return [Math.min(...dates), Math.max(...dates)];
-  }, [shownSeries]);
-
-  // Calorie axis from 0 to the visible max, rounded to nice steps.
-  const calorieAxis = useMemo(() => {
-    const values = shownSeries.calories.map((p) => p.calories);
-    if (values.length === 0) return null;
-    return niceDomain(0, Math.max(...values), 4);
   }, [shownSeries]);
 
   // Weight axis bounds from the visible weight series, rounded to nice steps.
@@ -498,39 +400,14 @@ export function Chart({
               {chartConfig[avg].label}
             </Button>
           ))}
-          {calorieData.length > 0 && (
-            <Button
-              size="sm"
-              variant={showCalories ? "default" : "outline"}
-              aria-pressed={showCalories}
-              onClick={() => setShowCalories((prev) => !prev)}
-            >
-              {chartConfig.calories.label}
-            </Button>
-          )}
-          {bodyFatData.length > 0 && (
-            <Button
-              size="sm"
-              variant={showBodyFat ? "default" : "outline"}
-              aria-pressed={showBodyFat}
-              onClick={() => setShowBodyFat((prev) => !prev)}
-            >
-              {chartConfig.bodyFat.label}
-            </Button>
-          )}
         </fieldset>
 
         <ChartContainer
           config={chartConfig}
-          className={
-            hasIndicators
-              ? "aspect-auto flex-[3] min-h-0"
-              : "aspect-auto flex-1 min-h-0"
-          }
+          className="aspect-auto flex-1 min-h-0"
         >
           <ComposedChart
             accessibilityLayer
-            syncId={SYNC_ID}
             data={chartData}
             margin={{ left: 0, right: 8 }}
           >
@@ -543,14 +420,10 @@ export function Chart({
               scale="time"
               axisLine={false}
               tickLine={false}
-              {...(hasIndicators
-                ? { tick: false, height: 4 }
-                : {
-                    tickFormatter: formatTick,
-                    tickMargin: 8,
-                    minTickGap: 32,
-                    height: 28,
-                  })}
+              tickFormatter={formatTick}
+              tickMargin={8}
+              minTickGap={32}
+              height={28}
             />
             <YAxis
               tickLine={false}
@@ -618,85 +491,6 @@ export function Chart({
             <ChartLegend content={<ChartLegendContent nameKey="name" />} />
           </ComposedChart>
         </ChartContainer>
-
-        {hasIndicators && (
-          <ChartContainer
-            config={chartConfig}
-            className="aspect-auto flex-1 min-h-0 border-t pt-2"
-          >
-            <ComposedChart
-              accessibilityLayer
-              syncId={SYNC_ID}
-              data={chartData}
-              margin={{ left: 0, right: 8 }}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                type="number"
-                domain={xDomain ?? ["dataMin", "dataMax"]}
-                allowDuplicatedCategory={false}
-                scale="time"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={32}
-                height={28}
-                tickFormatter={formatTick}
-              />
-              <YAxis
-                yAxisId="calories"
-                tickLine={false}
-                axisLine={false}
-                width={44}
-                domain={calorieAxis?.domain ?? [0, "auto"]}
-                ticks={calorieAxis?.ticks}
-                tickFormatter={(v: number) => v.toLocaleString()}
-              />
-              <YAxis
-                yAxisId="bodyFat"
-                orientation="right"
-                width={0}
-                hide
-                domain={["dataMin - 1", "dataMax + 1"]}
-              />
-              <ChartTooltip
-                cursor={false}
-                labelFormatter={(_value, payload) => {
-                  const ts = payload?.[0]?.payload?.date;
-                  return typeof ts === "number"
-                    ? format(new Date(ts), "PPP")
-                    : "";
-                }}
-                content={<ChartTooltipContent />}
-              />
-              {showCalories && (
-                <Bar
-                  name="calories"
-                  dataKey="calories"
-                  yAxisId="calories"
-                  fill="var(--color-calories)"
-                  fillOpacity={0.8}
-                  barSize={4}
-                  radius={1}
-                />
-              )}
-              {showBodyFat && (
-                <Line
-                  name="bodyFat"
-                  dataKey="bodyFat"
-                  yAxisId="bodyFat"
-                  type="monotone"
-                  stroke="var(--color-bodyFat)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  connectNulls
-                />
-              )}
-              <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-            </ComposedChart>
-          </ChartContainer>
-        )}
       </CardContent>
     </Card>
   );
