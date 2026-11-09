@@ -3,7 +3,8 @@
 -- Backfill timezone: existing timestamps are stored as UTC wall clock. Their
 -- calendar day is computed in the timezone given by the custom setting
 -- `bfit.backfill_timezone` (e.g. PGOPTIONS="-c bfit.backfill_timezone=Europe/Madrid"
--- bunx drizzle-kit migrate), defaulting to 'UTC' when it is not set.
+-- bunx drizzle-kit migrate), defaulting to 'America/Sao_Paulo' (the app's only
+-- real user) when it is not set, so a plain Vercel production build backfills correctly.
 --
 -- DATA CHANGES:
 --   * weight: per (user, day) only the latest weigh-in is kept (ties: highest
@@ -15,13 +16,12 @@
 --     user_profile.maintenance_calories, user_profile.current_calories.
 
 -- Fails fast (aborting the migration) if bfit.backfill_timezone is not a valid timezone.
-SELECT now() AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'UTC');--> statement-breakpoint
+SELECT now() AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo');--> statement-breakpoint
 
 ALTER TABLE "user" ADD COLUMN "timezone" text;--> statement-breakpoint
 UPDATE "user"
-SET "timezone" = current_setting('bfit.backfill_timezone', true)
-WHERE "timezone" IS NULL
-  AND NULLIF(current_setting('bfit.backfill_timezone', true), '') IS NOT NULL;--> statement-breakpoint
+SET "timezone" = COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo')
+WHERE "timezone" IS NULL;--> statement-breakpoint
 
 -- weight: keep the exact instant in measured_at.
 ALTER TABLE "weight" ADD COLUMN "measured_at" timestamp with time zone;--> statement-breakpoint
@@ -34,9 +34,9 @@ WITH ranked AS (
     "user_id",
     "body_fat_percent",
     "measured_at",
-    ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'UTC'))::date AS "day",
+    ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo'))::date AS "day",
     row_number() OVER (
-      PARTITION BY "user_id", ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'UTC'))::date
+      PARTITION BY "user_id", ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo'))::date
       ORDER BY "measured_at" DESC, "id" DESC
     ) AS "rn"
   FROM "weight"
@@ -61,7 +61,7 @@ USING (
   SELECT
     "id",
     row_number() OVER (
-      PARTITION BY "user_id", ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'UTC'))::date
+      PARTITION BY "user_id", ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo'))::date
       ORDER BY "measured_at" DESC, "id" DESC
     ) AS "rn"
   FROM "weight"
@@ -71,7 +71,7 @@ WHERE w."id" = ranked."id" AND ranked."rn" > 1;--> statement-breakpoint
 -- weight.date: timestamp -> calendar day (weight_user_id_date_unique now means one per day).
 ALTER TABLE "weight" ALTER COLUMN "date" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "weight" ALTER COLUMN "date" SET DATA TYPE date
-  USING ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'UTC'))::date;--> statement-breakpoint
+  USING ("measured_at" AT TIME ZONE COALESCE(NULLIF(current_setting('bfit.backfill_timezone', true), ''), 'America/Sao_Paulo'))::date;--> statement-breakpoint
 
 -- calorie_log: rows were written as browser-local midnight; rounding the UTC
 -- wall clock to the nearest midnight recovers the local day for offsets < 12h.
