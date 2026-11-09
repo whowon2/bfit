@@ -17,9 +17,10 @@ export function ExportJsonButton({ weights }: { weights: Weight[] }) {
       format: BFIT_EXPORT_FORMAT,
       version: BFIT_EXPORT_VERSION,
       unit: "kg",
-      weights: weights.map(({ value, date, bodyFatPercent }) => ({
+      weights: weights.map(({ value, date, measuredAt, bodyFatPercent }) => ({
         value,
-        date,
+        date, // calendar day "YYYY-MM-DD"
+        measuredAt: measuredAt ? measuredAt.toISOString() : null,
         bodyFatPercent,
       })),
     };

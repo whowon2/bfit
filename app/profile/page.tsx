@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ImportNutritionButton } from "@/components/import-nutrition";
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import type { ChangedFields } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { isDayString, parseDay } from "@/lib/dates";
 import { getProfile, getProfileHistory } from "@/lib/queries/profile";
 import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
 import { toWeightUnit } from "@/lib/units";
@@ -46,6 +48,7 @@ const FIELD_LABELS: Record<string, string> = {
   targetWeeks: "Timeframe",
   carbRatioPercent: "Carb ratio",
   proteinPerKg: "Protein target",
+  // Removed fields, kept so older history entries still render.
   maintenanceCalories: "Maintenance calories",
   currentCalories: "Current calories",
 };
@@ -76,7 +79,10 @@ function formatFieldValue(field: string, value: unknown): string {
     case "goal":
       return GOAL_LABELS[value as string] ?? String(value);
     case "birthDate":
-      return new Date(value as string).toLocaleDateString();
+      // Stored as a calendar day; format it without timezone shifting.
+      return isDayString(value)
+        ? format(parseDay(value), "PP")
+        : new Date(value as string).toLocaleDateString();
     case "height":
       return `${Number(value)} cm`;
     case "targetBodyFat":
@@ -103,17 +109,17 @@ export default async function ProfilePage() {
 
   const profile = await getProfile(session.user.id);
 
-  if (!profile) {
-    return <CreateProfileForm />;
-  }
-
-  const latestWeight = await getLatestWeight(session.user.id);
   const latestBodyFat = await getLatestBodyFat(session.user.id);
-
-  const weightKg = latestWeight ? Number(latestWeight.value) : null;
   const currentBodyFat = latestBodyFat?.bodyFatPercent
     ? Number(latestBodyFat.bodyFatPercent)
     : null;
+
+  if (!profile) {
+    return <CreateProfileForm currentBodyFat={currentBodyFat} />;
+  }
+
+  const latestWeight = await getLatestWeight(session.user.id);
+  const weightKg = latestWeight ? Number(latestWeight.value) : null;
 
   const history = await getProfileHistory(session.user.id);
 

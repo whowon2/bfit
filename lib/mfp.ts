@@ -51,7 +51,7 @@ export function isMfpNutritionExport(text: string): boolean {
 }
 
 export type MfpDailyNutrition = {
-  date: Date;
+  date: string; // calendar day "YYYY-MM-DD", as written by MFP
   actualCalories: string;
   proteinG: string;
   carbsG: string;
@@ -75,7 +75,7 @@ export function parseMfpNutritionCsv(text: string): MfpDailyNutrition[] {
   >();
 
   for (const cols of rows) {
-    const dateStr = cols[dateCol];
+    const dateStr = cols[dateCol]?.trim();
     if (!dateStr) continue;
 
     const existing = byDate.get(dateStr) ?? {
@@ -92,7 +92,9 @@ export function parseMfpNutritionCsv(text: string): MfpDailyNutrition[] {
   }
 
   return Array.from(byDate.entries()).map(([dateStr, totals]) => ({
-    date: new Date(`${dateStr}T00:00:00`),
+    // Kept as the calendar day string: no Date construction, so the browser's
+    // timezone can't shift it.
+    date: dateStr,
     actualCalories: Math.round(totals.calories).toString(),
     proteinG: totals.protein.toFixed(1),
     carbsG: totals.carbs.toFixed(1),

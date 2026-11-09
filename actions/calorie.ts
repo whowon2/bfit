@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db/drizzle";
 import { calorieLog } from "@/db/schema";
+import { isDayString } from "@/lib/dates";
 import { requireUserId } from "@/lib/session";
 
 const MAX_IMPORT_ROWS = 10_000;
@@ -14,7 +15,7 @@ const calories = z.coerce.number().finite().min(0).max(99_999);
 const grams = z.coerce.number().finite().min(0).max(9_999);
 
 const importCalorieRow = z.object({
-  date: z.coerce.date(),
+  date: z.string().refine(isDayString, { message: "Invalid date" }),
   actualCalories: calories,
   proteinG: grams,
   carbsG: grams,
@@ -47,6 +48,7 @@ export async function importCalorieEntries(entries: unknown) {
         proteinG: sql`excluded.protein_g`,
         carbsG: sql`excluded.carbs_g`,
         fatG: sql`excluded.fat_g`,
+        updatedAt: sql`now()`,
       },
     });
 

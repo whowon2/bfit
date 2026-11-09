@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useRef, useTransition } from "react";
+import { toast } from "sonner";
 import { addWeightEntry } from "@/actions/weight";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -11,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { formatDay } from "@/lib/dates";
 import { toStoredKg, type WeightUnit } from "@/lib/units";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -31,13 +33,19 @@ export default function WeightForm({ unit }: { unit: WeightUnit }) {
         const bodyFatRaw = formData.get("bodyFatPercent");
         const bodyFatPercent =
           bodyFatRaw && bodyFatRaw !== "" ? Number(bodyFatRaw) : undefined;
-        const entryDate = date ? new Date(date) : new Date();
-        if (time) {
-          const [hours, minutes] = time.split(":").map(Number);
-          entryDate.setHours(hours, minutes, 0, 0);
-        }
+        // Day + wall-clock time; the server resolves them in the user's
+        // timezone (no date = today there).
+        const entryDay = date ? formatDay(date) : undefined;
         startTransition(async () => {
-          await addWeightEntry(value, entryDate, bodyFatPercent);
+          const { replaced } = await addWeightEntry({
+            value,
+            bodyFatPercent,
+            date: entryDay,
+            time: time || null,
+          });
+          if (replaced) {
+            toast.info("Updated the existing entry for that day.");
+          }
           formRef.current?.reset();
           setDate(undefined);
           setTime("");

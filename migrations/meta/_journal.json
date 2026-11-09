@@ -50,6 +50,13 @@
       "when": 1789605601990,
       "tag": "0006_past_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794191450026,
+      "tag": "0007_data_model_cleanup",
+      "breakpoints": true
     }
   ]
 }

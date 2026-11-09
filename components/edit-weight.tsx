@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { updateWeightEntry } from "@/actions/weight";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -22,16 +23,22 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Weight } from "@/db/schema";
+import { formatDay, parseDay, timeInTimeZone } from "@/lib/dates";
 import { displayWeight, toStoredKg, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 export function EditWeightButton({
   weight,
   unit,
+  timeZone,
 }: {
   weight: Weight;
   unit: WeightUnit;
+  timeZone: string;
 }) {
+  const initialTime = weight.measuredAt
+    ? timeInTimeZone(weight.measuredAt, timeZone)
+    : "";
   // The dialog edits in the user's unit; stored values are kg.
   const initialValue = String(displayWeight(weight.value, unit));
   const [open, setOpen] = useState(false);
@@ -39,8 +46,8 @@ export function EditWeightButton({
   const [bodyFatPercent, setBodyFatPercent] = useState(
     weight.bodyFatPercent ?? "",
   );
-  const [date, setDate] = useState<Date>(weight.date);
-  const [time, setTime] = useState<string>(format(weight.date, "HH:mm"));
+  const [date, setDate] = useState<Date>(parseDay(weight.date));
+  const [time, setTime] = useState<string>(initialTime);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -58,19 +65,17 @@ export function EditWeightButton({
       bodyFatPercent === "" ? null : Number(bodyFatPercent);
     if (newBodyFatPercent !== null && Number.isNaN(newBodyFatPercent)) return;
 
-    const entryDate = new Date(date);
-    if (time) {
-      const [hours, minutes] = time.split(":").map(Number);
-      entryDate.setHours(hours, minutes, 0, 0);
-    }
-
     startTransition(async () => {
-      await updateWeightEntry(
-        weight.id,
-        newValue,
-        entryDate,
-        newBodyFatPercent,
-      );
+      const result = await updateWeightEntry(weight.id, {
+        value: newValue,
+        bodyFatPercent: newBodyFatPercent,
+        date: formatDay(date),
+        time: time || null, // empty = time of day unknown
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       router.refresh();
       setOpen(false);
     });
@@ -85,8 +90,8 @@ export function EditWeightButton({
         if (next) {
           setValue(initialValue);
           setBodyFatPercent(weight.bodyFatPercent ?? "");
-          setDate(weight.date);
-          setTime(format(weight.date, "HH:mm"));
+          setDate(parseDay(weight.date));
+          setTime(initialTime);
         }
       }}
     >

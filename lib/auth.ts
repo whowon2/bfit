@@ -16,6 +16,13 @@ export const auth = betterAuth({
         defaultValue: "kg",
         input: false,
       },
+      // Persisted in `user.timezone` (IANA name, null = not detected yet);
+      // only changed via `updateTimezone` / sign-up capture.
+      timezone: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
   },
   session: {

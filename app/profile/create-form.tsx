@@ -32,19 +32,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { computeCalcSnapshot } from "@/lib/nutrition";
+import { formatDay, parseDay } from "@/lib/dates";
+import { computeCalcSnapshot, goalConflict } from "@/lib/nutrition";
 import {
   type ProfileFormValues,
   profileFormSchema,
 } from "@/lib/profile-schema";
 import { cn } from "@/lib/utils";
 
-export function CreateProfileForm() {
+export function CreateProfileForm({
+  currentBodyFat = null,
+}: {
+  currentBodyFat?: number | null;
+}) {
   const router = useRouter();
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema) as Resolver<ProfileFormValues>,
     defaultValues: {
-      birthDate: new Date("02/02/2002"),
+      birthDate: parseDay("2002-02-02"),
       sex: "male",
       height: 180,
       activityLevel: "moderate",
@@ -53,19 +58,23 @@ export function CreateProfileForm() {
       targetWeeks: 12,
       carbRatioPercent: 50,
       proteinPerKg: 1.8,
-      maintenanceCalories: 0,
-      currentCalories: 0,
     },
   });
 
   const watched = form.watch();
+  const conflict = goalConflict({
+    goal: watched.goal,
+    currentBodyFat,
+    targetBodyFat: watched.targetBodyFat,
+  });
 
   const preview = computeCalcSnapshot({
     profile: {
-      birthDate: watched.birthDate.toISOString(),
+      birthDate: formatDay(watched.birthDate),
       sex: watched.sex,
       height: watched.height.toString(),
       activityLevel: watched.activityLevel,
+      goal: watched.goal,
       targetBodyFat: watched.targetBodyFat.toString(),
       targetWeeks: watched.targetWeeks,
       proteinPerKg: watched.proteinPerKg.toString(),
@@ -259,7 +268,7 @@ export function CreateProfileForm() {
                 <FormItem>
                   <FieldInfo
                     label="Target Body Fat (%)"
-                    info="Combined with your timeframe below, this sets the daily calorie surplus/deficit needed to reach it (assumes lean mass stays constant)."
+                    info="Combined with your timeframe below, this sets the daily calorie surplus/deficit needed to reach it (assumes lean mass stays constant). Must be below your current body fat for a cut and above it for a bulk; ignored when maintaining."
                   />
                   <FormControl>
                     <Input
@@ -271,6 +280,9 @@ export function CreateProfileForm() {
                     />
                   </FormControl>
                   <FormMessage />
+                  {conflict ? (
+                    <p className="text-destructive text-sm">{conflict}</p>
+                  ) : null}
                 </FormItem>
               )}
             />
@@ -366,7 +378,11 @@ export function CreateProfileForm() {
         <Button
           type="submit"
           className="mt-2"
-          disabled={form.formState.isSubmitting || !form.formState.isDirty}
+          disabled={
+            form.formState.isSubmitting ||
+            !form.formState.isDirty ||
+            conflict !== null
+          }
         >
           {form.formState.isSubmitting ? "Saving..." : "Save Profile"}
         </Button>

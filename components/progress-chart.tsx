@@ -1,6 +1,6 @@
 "use client";
 
-import { format, startOfDay, startOfMonth, startOfWeek, sub } from "date-fns";
+import { format, startOfMonth, startOfWeek, sub } from "date-fns";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,6 +30,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { CalorieLog, Weight } from "@/db/schema";
+import { parseDay } from "@/lib/dates";
 import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
 
 export const description = "A multiple line chart";
@@ -117,9 +118,9 @@ interface ChartRow {
 // a Line rendered with its own separate `data` override (like weekly/monthly
 // used to be) shifts that chart's index space out of step with a chart that
 // doesn't have those extra series. Merging every series — daily, weekly,
-// monthly, calories, body fat — into one row per calendar day (not exact
-// timestamp, since a weigh-in's time-of-day never lines up with a calorie
-// import's midnight) keeps both panels' index spaces identical.
+// monthly, calories, body fat — into one row per calendar day keeps both
+// panels' index spaces identical. Every point's `date` is already a stored
+// calendar day (local midnight via parseDay), so rows key on it directly.
 function mergeChartRows(
   dailyPoints: DailyPoint[],
   weeklyPoints: PeriodPoint[],
@@ -128,8 +129,7 @@ function mergeChartRows(
   bodyFatPoints: BodyFatPoint[],
 ): ChartRow[] {
   const rows = new Map<number, ChartRow>();
-  const upsert = (date: number, fields: Partial<ChartRow>) => {
-    const key = startOfDay(date).getTime();
+  const upsert = (key: number, fields: Partial<ChartRow>) => {
     const existing = rows.get(key);
     if (existing) {
       Object.assign(existing, fields);
@@ -151,12 +151,12 @@ function mergeChartRows(
 // category axis) — a week without a log just stretches that segment of the
 // line horizontally instead of connecting distant entries as if adjacent.
 function buildDailyPoints(weights: Weight[]): DailyPoint[] {
-  // Normalized to day granularity (not the exact log timestamp) so it merges
+  // Keyed by the stored calendar day (not the weigh-in time) so it merges
   // cleanly with calorie/body-fat rows keyed by day — see mergeChartRows.
   return [...weights]
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .sort((a, b) => a.date.localeCompare(b.date))
     .map((w) => ({
-      date: startOfDay(w.date).getTime(),
+      date: parseDay(w.date).getTime(),
       daily: Number(w.value),
     }));
 }
@@ -169,13 +169,11 @@ function buildPeriodPoints(
   periodStart: (date: Date) => Date,
   unit: WeightUnit,
 ): PeriodPoint[] {
-  const sorted = [...weights].sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  );
+  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
 
   const groups = new Map<number, number[]>();
   for (const w of sorted) {
-    const key = periodStart(w.date).getTime();
+    const key = periodStart(parseDay(w.date)).getTime();
     const group = groups.get(key);
     if (group) {
       group.push(Number(w.value));
@@ -214,7 +212,7 @@ function buildCaloriePoints(entries: CalorieLog[]): CaloriePoint[] {
   return entries
     .filter((e) => e.actualCalories !== null)
     .map((e) => ({
-      date: e.date.getTime(),
+      date: parseDay(e.date).getTime(),
       calories: Number(e.actualCalories),
     }))
     .sort((a, b) => a.date - b.date);
@@ -224,7 +222,7 @@ function buildBodyFatPoints(weights: Weight[]): BodyFatPoint[] {
   return weights
     .filter((w) => w.bodyFatPercent !== null)
     .map((w) => ({
-      date: w.date.getTime(),
+      date: parseDay(w.date).getTime(),
       bodyFat: Number(w.bodyFatPercent),
     }))
     .sort((a, b) => a.date - b.date);

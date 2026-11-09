@@ -5,18 +5,21 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/drizzle";
 import type { ChangedFields } from "@/db/schema";
 import { profileHistory, userProfile } from "@/db/schema";
-import { computeCalcSnapshot } from "@/lib/nutrition";
+import { dayInTimeZone } from "@/lib/dates";
+import { computeCalcSnapshot, goalConflict } from "@/lib/nutrition";
 import {
   type ProfileFormValues,
   profileFormSchema,
 } from "@/lib/profile-schema";
 import { getProfile } from "@/lib/queries/profile";
 import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
-import { requireUserId } from "@/lib/session";
+import { requireUser } from "@/lib/session";
 
-function toDbValues(data: ProfileFormValues) {
+function toDbValues(data: ProfileFormValues, timeZone: string) {
   return {
-    birthDate: data.birthDate.toISOString().slice(0, 10),
+    // The picker yields local midnight of the chosen day; take that day in the
+    // user's timezone rather than UTC (which shifts it east of Greenwich).
+    birthDate: dayInTimeZone(data.birthDate, timeZone),
     sex: data.sex,
     activityLevel: data.activityLevel,
     goal: data.goal,
@@ -25,9 +28,19 @@ function toDbValues(data: ProfileFormValues) {
     height: data.height.toString(),
     targetBodyFat: data.targetBodyFat.toString(),
     proteinPerKg: data.proteinPerKg.toString(),
-    maintenanceCalories: data.maintenanceCalories.toString(),
-    currentCalories: data.currentCalories.toString(),
   };
+}
+
+function assertGoalConsistent(
+  data: ProfileFormValues,
+  currentBodyFat: number | null,
+) {
+  const conflict = goalConflict({
+    goal: data.goal,
+    currentBodyFat,
+    targetBodyFat: data.targetBodyFat,
+  });
+  if (conflict) throw new Error(conflict);
 }
 
 async function latestMeasurements(userId: string) {
@@ -40,24 +53,24 @@ async function latestMeasurements(userId: string) {
 }
 
 export async function createProfile(input: ProfileFormValues) {
-  const userId = await requireUserId();
+  const { userId, timeZone } = await requireUser();
   const data = profileFormSchema.parse(input);
+  const measurements = await latestMeasurements(userId);
+  assertGoalConsistent(data, measurements.currentBodyFat);
+  const values = toDbValues(data, timeZone);
 
   const [profile] = await db
     .insert(userProfile)
     .values({
       userId,
-      ...toDbValues(data),
+      ...values,
     })
     .returning();
 
-  const calcAfter = computeCalcSnapshot({
-    profile,
-    ...(await latestMeasurements(userId)),
-  });
+  const calcAfter = computeCalcSnapshot({ profile, ...measurements });
 
   const changedFields: ChangedFields = Object.fromEntries(
-    Object.entries(toDbValues(data)).map(([key, value]) => [
+    Object.entries(values).map(([key, value]) => [
       key,
       { old: null, new: value },
     ]),
@@ -75,11 +88,13 @@ export async function createProfile(input: ProfileFormValues) {
 }
 
 export async function updateProfile(input: ProfileFormValues) {
-  const userId = await requireUserId();
+  const { userId, timeZone } = await requireUser();
   const data = profileFormSchema.parse(input);
 
   const before = await getProfile(userId);
   const measurements = await latestMeasurements(userId);
+  assertGoalConsistent(data, measurements.currentBodyFat);
+  const values = toDbValues(data, timeZone);
 
   const calcBefore = before
     ? computeCalcSnapshot({ profile: before, ...measurements })
@@ -87,7 +102,7 @@ export async function updateProfile(input: ProfileFormValues) {
 
   const [after] = await db
     .update(userProfile)
-    .set(toDbValues(data))
+    .set(values)
     .where(eq(userProfile.userId, userId))
     .returning();
 
@@ -97,16 +112,10 @@ export async function updateProfile(input: ProfileFormValues) {
 
   const calcAfter = computeCalcSnapshot({ profile: after, ...measurements });
 
-  const NUMERIC_FIELDS = new Set([
-    "height",
-    "targetBodyFat",
-    "proteinPerKg",
-    "maintenanceCalories",
-    "currentCalories",
-  ]);
+  const NUMERIC_FIELDS = new Set(["height", "targetBodyFat", "proteinPerKg"]);
 
   const beforeDb = before as Record<string, unknown> | undefined;
-  const afterDb = toDbValues(data) as Record<string, unknown>;
+  const afterDb = values as Record<string, unknown>;
   const changedFields: ChangedFields = Object.fromEntries(
     Object.entries(afterDb)
       .filter(([key, value]) => {

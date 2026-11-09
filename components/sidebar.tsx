@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { LogoutButton } from "./logout-button";
+import { TimezoneSync } from "./timezone-sync";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -70,6 +71,8 @@ export default async function Sidebar() {
           </nav>
         )}
       </div>
+
+      {session?.user && !session.user.timezone && <TimezoneSync />}
 
       {session?.user ? (
         <LogoutButton />

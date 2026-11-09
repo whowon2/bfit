@@ -18,6 +18,9 @@ export const user = pgTable("user", {
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
   weightUnit: text("weight_unit").default("kg").notNull(), // "kg" or "lbs"
+  // IANA timezone name (e.g. "Europe/Madrid"); null = not yet detected, treated
+  // as UTC. Source of truth for every server-side instant -> calendar day.
+  timezone: text("timezone"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -82,7 +85,11 @@ export const weight = pgTable(
     // Better to use decimal for weight (e.g. 72.5 kg)
     value: decimal("value", { precision: 5, scale: 2 }).notNull(),
     bodyFatPercent: decimal("body_fat_percent", { precision: 4, scale: 1 }),
-    date: timestamp("date").defaultNow().notNull(), // default to current day
+    // Calendar day (in the user's timezone) the weigh-in belongs to; one entry
+    // per user per day. Read as a "YYYY-MM-DD" string.
+    date: date("date").notNull(),
+    // Precise weigh-in instant, when known (null = time of day unknown).
+    measuredAt: timestamp("measured_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -110,11 +117,6 @@ export const userProfile = pgTable("user_profile", {
   proteinPerKg: decimal("protein_per_kg", { precision: 2, scale: 1 }).default(
     "1.8",
   ), // g of protein per kg bodyweight, 1-3
-  maintenanceCalories: decimal("maintenance_calories", {
-    precision: 6,
-    scale: 0,
-  }),
-  currentCalories: decimal("current_calories", { precision: 6, scale: 0 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -130,18 +132,12 @@ export const calorieLog = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
 
-    date: timestamp("date").defaultNow().notNull(),
-    targetCalories: decimal("target_calories", {
-      precision: 6,
-      scale: 0,
-    }),
+    // Calendar day as logged in the source app; read as "YYYY-MM-DD".
+    date: date("date").notNull(),
     actualCalories: decimal("actual_calories", { precision: 6, scale: 0 }), // optional
     proteinG: decimal("protein_g", { precision: 6, scale: 1 }),
     carbsG: decimal("carbs_g", { precision: 6, scale: 1 }),
     fatG: decimal("fat_g", { precision: 6, scale: 1 }),
-    phase: text("phase")
-      .$type<"cut" | "bulk" | "maintain">()
-      .default("maintain"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

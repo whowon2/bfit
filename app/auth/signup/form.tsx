@@ -14,7 +14,17 @@ export function SignupForm() {
   const [state, formAction, pending] = useActionState(signup, initialState);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form
+      action={(formData) => {
+        // Browser timezone becomes the account's timezone (editable in Settings).
+        formData.set(
+          "timezone",
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
+        );
+        formAction(formData);
+      }}
+      className="flex flex-col gap-3"
+    >
       <Input id="name" name="name" type="text" placeholder="Name" />
       <Input id="email" name="email" type="email" placeholder="Email" />
       <Input

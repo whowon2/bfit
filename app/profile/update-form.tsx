@@ -33,7 +33,8 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import type { Profile } from "@/db/schema";
-import { computeCalcSnapshot } from "@/lib/nutrition";
+import { formatDay, parseDay } from "@/lib/dates";
+import { computeCalcSnapshot, goalConflict } from "@/lib/nutrition";
 import {
   type ProfileFormValues,
   profileFormSchema,
@@ -56,7 +57,7 @@ export function UpdateProfileForm({
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema) as Resolver<ProfileFormValues>,
     defaultValues: {
-      birthDate: new Date(profile.birthDate),
+      birthDate: parseDay(profile.birthDate),
       sex: profile.sex ?? "male",
       height: profile.height ? Number(profile.height) : 180,
       activityLevel: profile.activityLevel ?? "moderate",
@@ -65,25 +66,25 @@ export function UpdateProfileForm({
       targetWeeks: profile.targetWeeks ?? 12,
       carbRatioPercent: profile.carbRatioPercent ?? 50,
       proteinPerKg: profile.proteinPerKg ? Number(profile.proteinPerKg) : 1.8,
-      maintenanceCalories: profile.maintenanceCalories
-        ? Number(profile.maintenanceCalories)
-        : 0,
-      currentCalories: profile.currentCalories
-        ? Number(profile.currentCalories)
-        : 0,
     },
   });
 
   const watched = form.watch();
+  const conflict = goalConflict({
+    goal: watched.goal,
+    currentBodyFat,
+    targetBodyFat: watched.targetBodyFat,
+  });
 
   const current = computeCalcSnapshot({ profile, weightKg, currentBodyFat });
   const preview = computeCalcSnapshot({
     profile: {
       ...profile,
-      birthDate: watched.birthDate.toISOString(),
+      birthDate: formatDay(watched.birthDate),
       sex: watched.sex,
       height: watched.height.toString(),
       activityLevel: watched.activityLevel,
+      goal: watched.goal,
       targetBodyFat: watched.targetBodyFat.toString(),
       targetWeeks: watched.targetWeeks,
       proteinPerKg: watched.proteinPerKg.toString(),
@@ -278,7 +279,7 @@ export function UpdateProfileForm({
                 <FormItem>
                   <FieldInfo
                     label="Target Body Fat (%)"
-                    info="Combined with your timeframe below, this sets the daily calorie surplus/deficit needed to reach it (assumes lean mass stays constant)."
+                    info="Combined with your timeframe below, this sets the daily calorie surplus/deficit needed to reach it (assumes lean mass stays constant). Must be below your current body fat for a cut and above it for a bulk; ignored when maintaining."
                   />
                   <FormControl>
                     <Input
@@ -290,6 +291,9 @@ export function UpdateProfileForm({
                     />
                   </FormControl>
                   <FormMessage />
+                  {conflict ? (
+                    <p className="text-destructive text-sm">{conflict}</p>
+                  ) : null}
                 </FormItem>
               )}
             />
@@ -419,6 +423,11 @@ export function UpdateProfileForm({
                 Target calories once you log a weight entry with a body fat %.
               </p>
             ) : null}
+            {watched.goal === "maintain" ? (
+              <p className="mt-2 text-muted-foreground text-xs">
+                Maintain: no surplus/deficit, so target calories equal TDEE.
+              </p>
+            ) : null}
           </div>
 
           <div className="border-t pt-4">
@@ -451,7 +460,11 @@ export function UpdateProfileForm({
         <Button
           type="submit"
           className="mt-2"
-          disabled={form.formState.isSubmitting || !form.formState.isDirty}
+          disabled={
+            form.formState.isSubmitting ||
+            !form.formState.isDirty ||
+            conflict !== null
+          }
         >
           {form.formState.isSubmitting ? "Saving..." : "Save Profile"}
         </Button>

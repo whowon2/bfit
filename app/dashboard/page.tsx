@@ -5,7 +5,8 @@ import { WeightList } from "@/components/weight-list";
 import { auth } from "@/lib/auth";
 import { getCalorieEntries } from "@/lib/queries/calorie";
 import { getProfile } from "@/lib/queries/profile";
-import { getWeightEntries } from "@/lib/queries/weight";
+import { getUserTimeZone } from "@/lib/queries/user";
+import { getLatestBodyFat, getWeightEntries } from "@/lib/queries/weight";
 import { toWeightUnit } from "@/lib/units";
 import { CreateProfileForm } from "../profile/create-form";
 
@@ -20,13 +21,23 @@ export default async function DashboardPage() {
 
   const unit = toWeightUnit(session.user.weightUnit);
 
+  const timeZone = await getUserTimeZone(session.user.id);
   const weights = await getWeightEntries(session.user.id);
   const calories = await getCalorieEntries(session.user.id);
 
   const profile = await getProfile(session.user.id);
 
   if (!profile) {
-    return <CreateProfileForm />;
+    const latestBodyFat = await getLatestBodyFat(session.user.id);
+    return (
+      <CreateProfileForm
+        currentBodyFat={
+          latestBodyFat?.bodyFatPercent
+            ? Number(latestBodyFat.bodyFatPercent)
+            : null
+        }
+      />
+    );
   }
 
   return (
@@ -34,7 +45,7 @@ export default async function DashboardPage() {
       <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch lg:h-[calc(100vh-2rem)]">
         <Chart weights={weights} calories={calories} unit={unit} />
 
-        <WeightList weights={weights} unit={unit} />
+        <WeightList weights={weights} unit={unit} timeZone={timeZone} />
       </div>
     </div>
   );

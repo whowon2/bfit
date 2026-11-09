@@ -1,5 +1,43 @@
 import { differenceInYears } from "date-fns";
 import type { CalcSnapshot, Profile } from "@/db/schema";
+import { isDayString, parseDay } from "@/lib/dates";
+
+type Goal = NonNullable<Profile["goal"]>;
+
+/**
+ * Message when the goal contradicts the target body fat given the current
+ * body fat (cut needs a lower target, bulk a higher one), else null. Unknown
+ * current body fat or a maintain goal never conflicts.
+ */
+export function goalConflict({
+  goal,
+  currentBodyFat,
+  targetBodyFat,
+}: {
+  goal: Profile["goal"];
+  currentBodyFat: number | null;
+  targetBodyFat: number | null;
+}): string | null {
+  if (currentBodyFat === null || targetBodyFat === null) return null;
+  if (goal === "cut" && targetBodyFat >= currentBodyFat) {
+    return `A cut needs a target body fat below your current ${currentBodyFat}%.`;
+  }
+  if (goal === "bulk" && targetBodyFat <= currentBodyFat) {
+    return `A bulk needs a target body fat above your current ${currentBodyFat}%.`;
+  }
+  return null;
+}
+
+/**
+ * The goal sets the direction of the calorie change: maintain → none, cut →
+ * never a surplus, bulk → never a deficit (a conflicting target yields 0).
+ */
+export function applyGoalDirection(change: number, goal: Profile["goal"]) {
+  const g: Goal = goal ?? "maintain";
+  if (g === "maintain") return 0;
+  if (g === "cut") return Math.min(change, 0);
+  return Math.max(change, 0);
+}
 
 export function calcBmr({
   weightKg,
@@ -111,6 +149,7 @@ export function computeCalcSnapshot({
     | "sex"
     | "height"
     | "activityLevel"
+    | "goal"
     | "targetBodyFat"
     | "targetWeeks"
     | "proteinPerKg"
@@ -119,7 +158,10 @@ export function computeCalcSnapshot({
   weightKg: number | null;
   currentBodyFat: number | null;
 }): CalcSnapshot {
-  const age = differenceInYears(new Date(), new Date(profile.birthDate));
+  const birthDate = isDayString(profile.birthDate)
+    ? parseDay(profile.birthDate)
+    : new Date(profile.birthDate);
+  const age = differenceInYears(new Date(), birthDate);
   const heightCm = profile.height ? Number(profile.height) : null;
 
   const bmr =
@@ -141,12 +183,15 @@ export function computeCalcSnapshot({
     currentBodyFat !== null &&
     targetBodyFat !== null &&
     profile.targetWeeks
-      ? calcDailyCalorieChange({
-          weightKg,
-          currentBodyFat,
-          targetBodyFat,
-          targetWeeks: profile.targetWeeks,
-        })
+      ? applyGoalDirection(
+          calcDailyCalorieChange({
+            weightKg,
+            currentBodyFat,
+            targetBodyFat,
+            targetWeeks: profile.targetWeeks,
+          }),
+          profile.goal,
+        )
       : null;
 
   const targetCalories =

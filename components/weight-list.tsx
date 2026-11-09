@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import WeightForm from "@/components/add-weight";
 import type { Weight } from "@/db/schema";
+import { formatTimeInTimeZone, parseDay } from "@/lib/dates";
 import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { EditWeightButton } from "./edit-weight";
@@ -17,15 +18,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 export function WeightList({
   weights,
   unit,
+  timeZone,
 }: {
   weights: Weight[];
   unit: WeightUnit;
+  timeZone: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const sorted = [...weights].sort(
-    (a, b) => b.date.getTime() - a.date.getTime(),
-  );
+  // `date` is the stored calendar day ("YYYY-MM-DD"), so string order is date order.
+  const sorted = [...weights].sort((a, b) => b.date.localeCompare(a.date));
 
   const monthStats = new Map<string, { avg: number; diff: number | null }>();
   const monthGroups = new Map<
@@ -33,11 +35,11 @@ export function WeightList({
     { total: number; count: number; time: number }
   >();
   for (const w of weights) {
-    const key = format(w.date, "MMMM yyyy");
+    const key = format(parseDay(w.date), "MMMM yyyy");
     const group = monthGroups.get(key) ?? {
       total: 0,
       count: 0,
-      time: w.date.getTime(),
+      time: parseDay(w.date).getTime(),
     };
     group.total += displayWeight(w.value, unit);
     group.count += 1;
@@ -99,9 +101,10 @@ export function WeightList({
           <div className="flex-1 min-h-0 overflow-auto">
             <AnimatePresence initial={false}>
               {sorted.map((w, i) => {
-                const month = format(w.date, "MMMM yyyy");
+                const month = format(parseDay(w.date), "MMMM yyyy");
                 const showMonth =
-                  i === 0 || month !== format(sorted[i - 1].date, "MMMM yyyy");
+                  i === 0 ||
+                  month !== format(parseDay(sorted[i - 1].date), "MMMM yyyy");
                 return (
                   <motion.div
                     key={w.id}
@@ -179,11 +182,17 @@ export function WeightList({
                           )}
                         </span>
                         <span className="text-muted-foreground text-xs">
-                          {format(w.date, "MMM d, yyyy · h:mm a")}
+                          {format(parseDay(w.date), "MMM d, yyyy")}
+                          {w.measuredAt &&
+                            ` · ${formatTimeInTimeZone(w.measuredAt, timeZone)}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <EditWeightButton weight={w} unit={unit} />
+                        <EditWeightButton
+                          weight={w}
+                          unit={unit}
+                          timeZone={timeZone}
+                        />
                         <RemoveWeightButton weightId={w.id} />
                       </div>
                     </motion.div>

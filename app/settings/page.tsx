@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TimezoneSelect } from "@/components/timezone-select";
 import {
   Card,
   CardContent,
@@ -22,6 +23,12 @@ export default async function SettingsPage() {
   }
 
   const weightUnit = toWeightUnit(session.user.weightUnit);
+  const timezone = session.user.timezone ?? null;
+  const timezoneOptions = Intl.supportedValuesOf("timeZone");
+  if (!timezoneOptions.includes("UTC")) timezoneOptions.unshift("UTC");
+  if (timezone && !timezoneOptions.includes(timezone)) {
+    timezoneOptions.unshift(timezone);
+  }
 
   return (
     <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
@@ -35,7 +42,7 @@ export default async function SettingsPage() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Preferences</CardTitle>
-          <CardDescription>Units and appearance.</CardDescription>
+          <CardDescription>Units, timezone and appearance.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
@@ -46,6 +53,17 @@ export default async function SettingsPage() {
               </p>
             </div>
             <WeightUnitSelect weightUnit={weightUnit} />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col gap-0.5">
+              <p className="font-medium text-sm">Timezone</p>
+              <p className="text-muted-foreground text-xs">
+                Decides which day a weigh-in belongs to. Changing it does not
+                move existing entries.
+              </p>
+            </div>
+            <TimezoneSelect timezone={timezone} options={timezoneOptions} />
           </div>
 
           <div className="flex items-center justify-between">
