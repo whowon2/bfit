@@ -156,6 +156,16 @@ export type CalcSnapshot = {
   dailyCalorieChange: number | null;
   targetCalories: number | null;
   macros: { proteinG: number; carbsG: number; fatG: number } | null;
+  /**
+   * Maintenance that drove `targetCalories`/`macros` (adaptive-tdee). `tdee`
+   * stays the formula value. Absent on snapshots recorded before that change.
+   */
+  maintenance?: {
+    kcal: number;
+    source: "formula" | "adaptive" | "blended";
+    confidence: number | null;
+    observedKcal: number | null;
+  } | null;
 };
 
 export const profileHistory = pgTable("profile_history", {

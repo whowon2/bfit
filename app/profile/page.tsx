@@ -9,10 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ChangedFields } from "@/db/schema";
+import type { CalcSnapshot, ChangedFields } from "@/db/schema";
+import { explainMaintenance, observedReasonText } from "@/lib/adaptive-tdee";
 import { auth } from "@/lib/auth";
 import { isDayString, parseDay } from "@/lib/dates";
+import { chooseMaintenance, computeCalcSnapshot } from "@/lib/nutrition";
+import { getObservedTdee } from "@/lib/queries/adaptive-tdee";
 import { getProfile, getProfileHistory } from "@/lib/queries/profile";
+import { getUserTimeZone } from "@/lib/queries/user";
 import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
 import { toWeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
@@ -63,6 +67,20 @@ const NUMERIC_FIELDS = new Set([
   "currentCalories",
 ]);
 
+const SOURCE_LABELS: Record<string, string> = {
+  adaptive: "adaptive",
+  blended: "blended",
+  formula: "formula",
+};
+
+const kcal = (n: number) => Math.round(n).toLocaleString("en-US");
+
+function maintenanceLabel(m: CalcSnapshot["maintenance"]) {
+  return m
+    ? `${m.kcal} kcal/day (${SOURCE_LABELS[m.source] ?? m.source})`
+    : "—";
+}
+
 function isDecrease(field: string, oldValue: unknown, newValue: unknown) {
   if (!NUMERIC_FIELDS.has(field)) return false;
   if (oldValue === null || oldValue === undefined) return false;
@@ -109,12 +127,17 @@ export default async function ProfilePage() {
 
   const userId = session.user.id;
   const weightUnit = toWeightUnit(session.user.weightUnit);
-  const [profile, latestWeight, latestBodyFat, history] = await Promise.all([
-    getProfile(userId),
-    getLatestWeight(userId),
-    getLatestBodyFat(userId),
-    getProfileHistory(userId),
-  ]);
+  const timeZone = await getUserTimeZone(userId);
+  const [profile, latestWeight, latestBodyFat, history, adaptive] =
+    await Promise.all([
+      getProfile(userId),
+      getLatestWeight(userId),
+      getLatestBodyFat(userId),
+      getProfileHistory(userId),
+      getObservedTdee(userId, timeZone, { withSeries: true }),
+    ]);
+  const { observed } = adaptive;
+  const series = adaptive.series ?? [];
   const weightKg = latestWeight ? Number(latestWeight.value) : null;
   const currentBodyFat = latestBodyFat?.bodyFatPercent
     ? Number(latestBodyFat.bodyFatPercent)
@@ -150,12 +173,24 @@ export default async function ProfilePage() {
               weightKg={weightKg}
               weightUnit={weightUnit}
               currentBodyFat={currentBodyFat}
+              observed={observed}
             />
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const formulaTdee = computeCalcSnapshot({
+    profile,
+    weightKg,
+    currentBodyFat,
+  }).tdee;
+  const choice = chooseMaintenance(observed, formulaTdee);
+  const seriesMax = Math.max(0, ...series.map((p) => p.kcal ?? 0));
+  const seriesMin = Math.min(
+    ...series.map((p) => p.kcal ?? Number.POSITIVE_INFINITY),
+  );
 
   return (
     <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
@@ -170,7 +205,91 @@ export default async function ProfilePage() {
             weightKg={weightKg}
             weightUnit={weightUnit}
             currentBodyFat={currentBodyFat}
+            observed={observed}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="w-full" data-slot="maintenance-comparison">
+        <CardHeader>
+          <CardTitle>Maintenance</CardTitle>
+          <CardDescription>
+            Formula estimate vs what your logged intake and weight change show.
+            Your targets use the one marked in use.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-muted-foreground text-xs">Formula TDEE</dt>
+              <dd className="font-semibold text-lg tabular-nums">
+                {formulaTdee !== null ? `${kcal(formulaTdee)} kcal` : "—"}
+              </dd>
+              <dd className="text-muted-foreground text-xs">
+                BMR × activity level
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-muted-foreground text-xs">Observed TDEE</dt>
+              <dd className="font-semibold text-lg tabular-nums">
+                {observed.ok ? `${kcal(observed.kcal)} kcal` : "—"}
+              </dd>
+              <dd className="text-muted-foreground text-xs">
+                {observed.ok
+                  ? `${Math.round(observed.confidence * 100)}% confidence`
+                  : observedReasonText(observed)}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-muted-foreground text-xs">In use</dt>
+              <dd className="font-semibold text-lg tabular-nums">
+                {choice.kcal !== null ? `${kcal(choice.kcal)} kcal` : "—"}
+              </dd>
+              <dd className="text-muted-foreground text-xs capitalize">
+                {choice.source}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-muted-foreground text-xs">
+            {explainMaintenance(choice, observed, weightUnit)}
+          </p>
+          {series.some((p) => p.kcal !== null) ? (
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-xs uppercase tracking-wide">
+                Observed TDEE by week
+              </p>
+              <ul className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+                {series.map((p) => {
+                  const range = seriesMax - seriesMin;
+                  const height =
+                    p.kcal === null
+                      ? 0
+                      : range > 0
+                        ? 20 + ((p.kcal - seriesMin) / range) * 80
+                        : 60;
+                  return (
+                    <li
+                      key={p.endDay}
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <div className="flex h-12 w-full items-end">
+                        <div
+                          className="w-full rounded-sm bg-primary/70"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <span className="text-xs tabular-nums">
+                        {p.kcal !== null ? kcal(p.kcal) : "—"}
+                      </span>
+                      <span className="text-muted-foreground text-[10px]">
+                        {format(parseDay(p.endDay), "MMM d")}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -269,6 +388,25 @@ export default async function ProfilePage() {
                         → {entry.calcAfter.macros.proteinG}p/
                         {entry.calcAfter.macros.carbsG}c/
                         {entry.calcAfter.macros.fatG}f
+                      </span>
+                    </p>
+                  ) : null}
+                  {entry.calcAfter.maintenance &&
+                  entry.calcBefore?.maintenance?.kcal !==
+                    entry.calcAfter.maintenance.kcal ? (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">
+                        Maintenance{" "}
+                      </span>
+                      {entry.calcBefore ? (
+                        <>
+                          <span className="text-muted-foreground line-through">
+                            {maintenanceLabel(entry.calcBefore.maintenance)}
+                          </span>{" "}
+                        </>
+                      ) : null}
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        → {maintenanceLabel(entry.calcAfter.maintenance)}
                       </span>
                     </p>
                   ) : null}

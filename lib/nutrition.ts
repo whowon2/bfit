@@ -1,8 +1,17 @@
 import { differenceInYears } from "date-fns";
 import type { CalcSnapshot, Profile } from "@/db/schema";
+import type { ObservedTdee } from "@/lib/adaptive-tdee";
 import { isDayString, parseDay } from "@/lib/dates";
 
 type Goal = NonNullable<Profile["goal"]>;
+
+/**
+ * Energy per kg of body-weight change. 7700 kcal/kg is adipose tissue; real
+ * loss is mixed tissue (lower density), but the planned deficit and the
+ * observed-TDEE estimate both use this one constant, so the closed loop
+ * (eat the target -> observe the rate -> re-estimate) stays self-consistent.
+ */
+export const KCAL_PER_KG = 7700;
 
 /**
  * Message when the goal contradicts the target body fat given the current
@@ -79,7 +88,7 @@ export function calcTdee({
 }
 
 // Daily calorie deficit/surplus to reach targetBodyFat within targetWeeks,
-// assuming lean mass stays constant (7700 kcal ≈ 1 kg fat).
+// assuming lean mass stays constant (KCAL_PER_KG ≈ 1 kg fat).
 export function calcDailyCalorieChange({
   weightKg,
   currentBodyFat,
@@ -97,7 +106,7 @@ export function calcDailyCalorieChange({
     targetBodyFat,
   });
   const deltaKg = targetWeightKg - weightKg;
-  const totalKcal = deltaKg * 7700;
+  const totalKcal = deltaKg * KCAL_PER_KG;
   return Math.round(totalKcal / (targetWeeks * 7));
 }
 
@@ -135,13 +144,65 @@ export function calcMacros({
   return { proteinG, carbsG, fatG };
 }
 
+export type MaintenanceSource = "formula" | "adaptive" | "blended";
+
+export type MaintenanceChoice = {
+  kcal: number | null;
+  source: MaintenanceSource;
+  /** Observed-estimate confidence (0..1); null when the formula is used. */
+  confidence: number | null;
+  observedKcal: number | null;
+  formulaKcal: number | null;
+};
+
+/** At or above this confidence the observed TDEE is used as-is. */
+export const ADAPTIVE_FULL_CONFIDENCE = 0.75;
+
+/**
+ * The maintenance that drives targets: the observed (adaptive) TDEE when
+ * confident (or when there is no formula to fall back on), a
+ * confidence-weighted blend with the formula TDEE when less confident, else
+ * the formula.
+ */
+export function chooseMaintenance(
+  observed: ObservedTdee | null | undefined,
+  formulaKcal: number | null,
+): MaintenanceChoice {
+  if (!observed?.ok) {
+    return {
+      kcal: formulaKcal,
+      source: "formula",
+      confidence: null,
+      observedKcal: null,
+      formulaKcal,
+    };
+  }
+  const base = {
+    confidence: observed.confidence,
+    observedKcal: observed.kcal,
+    formulaKcal,
+  };
+  if (formulaKcal === null || observed.confidence >= ADAPTIVE_FULL_CONFIDENCE) {
+    return { ...base, kcal: observed.kcal, source: "adaptive" };
+  }
+  const c = observed.confidence;
+  return {
+    ...base,
+    kcal: Math.round(c * observed.kcal + (1 - c) * formulaKcal),
+    source: "blended",
+  };
+}
+
 // Full BMR/TDEE/target-calorie/macro snapshot for a given profile + latest
 // body measurements. Shared by preview UI and profile-history recording so
-// both stay in sync with the same math.
+// both stay in sync with the same math. With `observed` (adaptive TDEE),
+// target calories and macros follow `chooseMaintenance`; `tdee` stays the
+// formula value.
 export function computeCalcSnapshot({
   profile,
   weightKg,
   currentBodyFat,
+  observed,
 }: {
   profile: Pick<
     Profile,
@@ -157,6 +218,7 @@ export function computeCalcSnapshot({
   >;
   weightKg: number | null;
   currentBodyFat: number | null;
+  observed?: ObservedTdee | null;
 }): CalcSnapshot {
   const birthDate = isDayString(profile.birthDate)
     ? parseDay(profile.birthDate)
@@ -194,8 +256,19 @@ export function computeCalcSnapshot({
         )
       : null;
 
+  const choice = chooseMaintenance(observed, tdee);
+  const maintenance =
+    choice.kcal !== null
+      ? {
+          kcal: choice.kcal,
+          source: choice.source,
+          confidence: choice.confidence,
+          observedKcal: choice.observedKcal,
+        }
+      : null;
+
   const targetCalories =
-    tdee !== null ? tdee + (dailyCalorieChange ?? 0) : null;
+    choice.kcal !== null ? choice.kcal + (dailyCalorieChange ?? 0) : null;
 
   const macros =
     weightKg !== null && targetCalories !== null
@@ -209,5 +282,5 @@ export function computeCalcSnapshot({
         })
       : null;
 
-  return { bmr, tdee, dailyCalorieChange, targetCalories, macros };
+  return { bmr, tdee, dailyCalorieChange, targetCalories, macros, maintenance };
 }

@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import type { ObservedTdee } from "@/lib/adaptive-tdee";
 import { formatDay, parseDay } from "@/lib/dates";
 import { computeCalcSnapshot, goalConflict } from "@/lib/nutrition";
 import {
@@ -45,10 +46,13 @@ export function CreateProfileForm({
   weightKg = null,
   weightUnit = "kg",
   currentBodyFat = null,
+  observed = null,
 }: {
   weightKg?: number | null;
   weightUnit?: WeightUnit;
   currentBodyFat?: number | null;
+  /** Observed (adaptive) TDEE; when usable, targets follow it. */
+  observed?: ObservedTdee | null;
 }) {
   const router = useRouter();
   const form = useForm<ProfileFormValues>({
@@ -87,6 +91,7 @@ export function CreateProfileForm({
     },
     weightKg,
     currentBodyFat,
+    observed,
   });
 
   async function onSubmit(values: ProfileFormValues) {
@@ -378,6 +383,9 @@ export function CreateProfileForm({
           </p>
           <p className="text-muted-foreground tabular-nums">
             BMR {preview.bmr ?? "—"} kcal · TDEE {preview.tdee ?? "—"} kcal ·
+            {preview.maintenance && preview.maintenance.source !== "formula"
+              ? ` Maintenance ${preview.maintenance.kcal} kcal (${preview.maintenance.source}) ·`
+              : ""}{" "}
             Target {preview.targetCalories ?? "—"} kcal/day
           </p>
           {preview.macros ? (

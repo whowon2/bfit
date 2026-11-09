@@ -1,12 +1,19 @@
 "use client";
 
 import { addDays as addDaysToDate, format } from "date-fns";
+import { Info } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { CalcSnapshot } from "@/db/schema";
 import { type WindowPreset, windowLabel } from "@/lib/chart-window";
 import { parseDay } from "@/lib/dates";
+import type { MaintenanceSource } from "@/lib/nutrition";
 import { type DayPoint, projectToTarget } from "@/lib/trend";
 import { kgToUnit, roundForUnit, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
@@ -21,13 +28,22 @@ export type NutritionSummary = {
 } | null;
 
 /**
- * Maintenance calories. RESERVED SLOT: `formula` is the profile's
- * BMR × activity TDEE; a later adaptive-TDEE change supplies `adaptive`
- * (estimated from logged intake vs trend weight change) through the same prop.
+ * Maintenance calories driving the targets (see `chooseMaintenance`):
+ * `adaptive` = observed from logged intake vs weight change, `blended` =
+ * confidence-weighted mix with the formula, `formula` = BMR × activity.
  */
 export type MaintenanceStat = {
   kcal: number | null;
-  source: "formula" | "adaptive";
+  source: MaintenanceSource;
+  confidence: number | null;
+  /** Tooltip: how it was computed, or why it fell back to the formula. */
+  explanation: string;
+};
+
+const MAINTENANCE_SUB: Record<MaintenanceSource, string> = {
+  adaptive: "Adaptive, from your intake and weight",
+  blended: "Blended: adaptive + formula",
+  formula: "Formula estimate from your profile",
 };
 
 type Tone = "good" | "bad" | "neutral";
@@ -64,7 +80,7 @@ function Stat({
   className,
   ...rest
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   unit?: string;
   sub?: ReactNode;
@@ -76,7 +92,7 @@ function Stat({
       className={cn("flex min-w-0 flex-col gap-1 bg-card p-4", className)}
       {...rest}
     >
-      <p className="text-muted-foreground text-sm">{label}</p>
+      <div className="text-muted-foreground text-sm">{label}</div>
       <p className="truncate font-semibold text-2xl tabular-nums tracking-tight">
         {value}
         {unit && (
@@ -297,7 +313,25 @@ export function SummaryStrip({
       />
       {caloriesStat}
       <Stat
-        label="Maintenance"
+        label={
+          <span className="flex items-center gap-1">
+            Maintenance
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="How maintenance is calculated"
+                  className="cursor-help"
+                >
+                  <Info className="size-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-72">
+                {maintenance.explanation}
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        }
         data-slot="maintenance"
         data-source={maintenance.source}
         value={maintenance.kcal !== null ? kcal(maintenance.kcal) : "—"}
@@ -305,9 +339,10 @@ export function SummaryStrip({
         sub={
           maintenance.kcal === null
             ? "Log a weight to estimate"
-            : maintenance.source === "adaptive"
-              ? "Adaptive, from your intake and trend"
-              : "Formula estimate from your profile"
+            : maintenance.confidence !== null &&
+                maintenance.source !== "formula"
+              ? `${MAINTENANCE_SUB[maintenance.source]} · ${Math.round(maintenance.confidence * 100)}% confidence`
+              : MAINTENANCE_SUB[maintenance.source]
         }
       />
     </section>

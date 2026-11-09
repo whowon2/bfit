@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardView } from "@/components/dashboard-view";
+import { estimateObservedTdee, explainMaintenance } from "@/lib/adaptive-tdee";
 import { auth } from "@/lib/auth";
 import { todayInTimeZone } from "@/lib/dates";
-import { computeCalcSnapshot } from "@/lib/nutrition";
+import { chooseMaintenance, computeCalcSnapshot } from "@/lib/nutrition";
+import { toDayPoints, toIntakeDays } from "@/lib/queries/adaptive-tdee";
 import { getCalorieEntries } from "@/lib/queries/calorie";
 import { getProfile } from "@/lib/queries/profile";
 import { getUserTimeZone } from "@/lib/queries/user";
@@ -40,6 +42,13 @@ export default async function DashboardPage() {
     ? Number(latestBodyFatRow.bodyFatPercent)
     : null;
 
+  // Observed (adaptive) TDEE from the full history already loaded above.
+  const observed = estimateObservedTdee({
+    weights: toDayPoints(weights),
+    intake: toIntakeDays(calories),
+    today,
+  });
+
   // The profile is optional: without one the dashboard still works and the
   // nutrition stats are replaced by a prompt to set it up.
   const nutrition = profile
@@ -51,9 +60,16 @@ export default async function DashboardPage() {
           profile,
           weightKg: latestWeightKg,
           currentBodyFat: latestBodyFat,
+          observed,
         }),
       }
     : null;
+
+  // Same policy the snapshot used for its target calories.
+  const maintenanceChoice = chooseMaintenance(
+    observed,
+    nutrition?.snapshot.tdee ?? null,
+  );
 
   const todayCalories = calories.find((c) => c.date === today)?.actualCalories;
 
@@ -67,11 +83,11 @@ export default async function DashboardPage() {
       latestBodyFat={latestBodyFat}
       todayCalories={todayCalories != null ? Number(todayCalories) : null}
       nutrition={nutrition}
-      // Reserved for the adaptive-TDEE change: pass `source: "adaptive"` with
-      // its estimate once it exists. Until then the formula TDEE is shown.
       maintenance={{
-        kcal: nutrition?.snapshot.tdee ?? null,
-        source: "formula",
+        kcal: maintenanceChoice.kcal,
+        source: maintenanceChoice.source,
+        confidence: maintenanceChoice.confidence,
+        explanation: explainMaintenance(maintenanceChoice, observed, unit),
       }}
     />
   );

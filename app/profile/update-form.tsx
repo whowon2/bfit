@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import type { Profile } from "@/db/schema";
+import type { ObservedTdee } from "@/lib/adaptive-tdee";
 import { formatDay, parseDay } from "@/lib/dates";
 import { computeCalcSnapshot, goalConflict } from "@/lib/nutrition";
 import {
@@ -47,11 +48,14 @@ export function UpdateProfileForm({
   weightKg,
   weightUnit,
   currentBodyFat,
+  observed,
 }: {
   profile: Profile;
   weightKg: number | null;
   weightUnit: WeightUnit;
   currentBodyFat: number | null;
+  /** Observed (adaptive) TDEE; targets and macros follow the chosen maintenance. */
+  observed: ObservedTdee;
 }) {
   const router = useRouter();
   const form = useForm<ProfileFormValues>({
@@ -76,7 +80,12 @@ export function UpdateProfileForm({
     targetBodyFat: watched.targetBodyFat,
   });
 
-  const current = computeCalcSnapshot({ profile, weightKg, currentBodyFat });
+  const current = computeCalcSnapshot({
+    profile,
+    weightKg,
+    currentBodyFat,
+    observed,
+  });
   const preview = computeCalcSnapshot({
     profile: {
       ...profile,
@@ -92,6 +101,7 @@ export function UpdateProfileForm({
     },
     weightKg,
     currentBodyFat,
+    observed,
   });
 
   async function onSubmit(values: ProfileFormValues) {
@@ -390,7 +400,7 @@ export function UpdateProfileForm({
                   : ""}
               </p>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-5">
               <StatTile
                 label="BMR"
                 unit=" kcal/day"
@@ -402,6 +412,12 @@ export function UpdateProfileForm({
                 unit=" kcal/day"
                 current={current.tdee}
                 preview={preview.tdee}
+              />
+              <StatTile
+                label={`Maintenance (${preview.maintenance?.source ?? "formula"})`}
+                unit=" kcal/day"
+                current={current.maintenance?.kcal ?? null}
+                preview={preview.maintenance?.kcal ?? null}
               />
               <StatTile
                 label="Surplus/deficit"
@@ -417,6 +433,16 @@ export function UpdateProfileForm({
                 preview={preview.targetCalories}
               />
             </div>
+            {preview.maintenance && preview.maintenance.source !== "formula" ? (
+              <p className="mt-2 text-muted-foreground text-xs">
+                Targets use your observed maintenance (from logged intake and
+                weight change)
+                {preview.maintenance.source === "blended"
+                  ? ", blended with the TDEE formula by confidence"
+                  : ""}
+                . See Maintenance below.
+              </p>
+            ) : null}
             {currentBodyFat === null ? (
               <p className="mt-2 text-muted-foreground text-xs">
                 Target Body Fat and Timeframe only affect Surplus/deficit and
@@ -425,7 +451,8 @@ export function UpdateProfileForm({
             ) : null}
             {watched.goal === "maintain" ? (
               <p className="mt-2 text-muted-foreground text-xs">
-                Maintain: no surplus/deficit, so target calories equal TDEE.
+                Maintain: no surplus/deficit, so target calories equal the
+                maintenance in use.
               </p>
             ) : null}
           </div>

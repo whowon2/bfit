@@ -11,6 +11,7 @@ import {
   type ProfileFormValues,
   profileFormSchema,
 } from "@/lib/profile-schema";
+import { getObservedTdee } from "@/lib/queries/adaptive-tdee";
 import { getProfile } from "@/lib/queries/profile";
 import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
 import { requireUser } from "@/lib/session";
@@ -43,19 +44,29 @@ function assertGoalConsistent(
   if (conflict) throw new Error(conflict);
 }
 
-async function latestMeasurements(userId: string) {
-  const weightKg = (await getLatestWeight(userId))?.value;
-  const currentBodyFat = (await getLatestBodyFat(userId))?.bodyFatPercent;
+/**
+ * Inputs for the calc snapshot, including the observed (adaptive) TDEE so the
+ * recorded targets are the ones the user actually saw.
+ */
+async function latestMeasurements(userId: string, timeZone: string) {
+  const [latestWeight, latestBodyFat, { observed }] = await Promise.all([
+    getLatestWeight(userId),
+    getLatestBodyFat(userId),
+    getObservedTdee(userId, timeZone),
+  ]);
+  const weightKg = latestWeight?.value;
+  const currentBodyFat = latestBodyFat?.bodyFatPercent;
   return {
     weightKg: weightKg != null ? Number(weightKg) : null,
     currentBodyFat: currentBodyFat != null ? Number(currentBodyFat) : null,
+    observed,
   };
 }
 
 export async function createProfile(input: ProfileFormValues) {
   const { userId, timeZone } = await requireUser();
   const data = profileFormSchema.parse(input);
-  const measurements = await latestMeasurements(userId);
+  const measurements = await latestMeasurements(userId, timeZone);
   assertGoalConsistent(data, measurements.currentBodyFat);
   const values = toDbValues(data, timeZone);
 
@@ -92,7 +103,7 @@ export async function updateProfile(input: ProfileFormValues) {
   const data = profileFormSchema.parse(input);
 
   const before = await getProfile(userId);
-  const measurements = await latestMeasurements(userId);
+  const measurements = await latestMeasurements(userId, timeZone);
   assertGoalConsistent(data, measurements.currentBodyFat);
   const values = toDbValues(data, timeZone);
 
