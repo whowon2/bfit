@@ -1,7 +1,7 @@
 # progress-chart-averages Specification
 
 ## Purpose
-TBD - created by archiving change fix-weekly-monthly-chart-averages. Update Purpose after archive.
+The progress chart shows daily weights plus true per-calendar-week and per-calendar-month averages on one shared time axis, filtered consistently by the selected window.
 ## Requirements
 ### Requirement: Weekly average is one point per calendar week
 The system SHALL compute the weekly series on the progress chart as one data point per calendar week (Monday-start) that contains at least one weight log entry, with the point's value equal to the average of that week's entries and the point's timestamp equal to the start of that week.
