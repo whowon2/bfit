@@ -1,78 +1,52 @@
 # progress-chart-averages Specification
 
 ## Purpose
-The progress chart shows daily weights plus true per-calendar-week and per-calendar-month averages on one shared time axis, filtered consistently by the selected window.
+The progress chart shows the user's daily weigh-ins together with the EWMA trend weight on one time-scaled axis, filtered by the selected window. Period averages (weekly/monthly) are not charted; monthly averages live in the History list's month headers.
 ## Requirements
-### Requirement: Weekly average is one point per calendar week
-The system SHALL compute the weekly series on the progress chart as one data point per calendar week (Monday-start) that contains at least one weight log entry, with the point's value equal to the average of that week's entries and the point's timestamp equal to the start of that week.
+### Requirement: Chart always shows trend and daily series
+The progress chart SHALL always render exactly two series: the daily series and the trend series. There SHALL be no series toggles. Weekly and monthly average series SHALL NOT be drawn.
 
-#### Scenario: Multiple logs in the same week collapse to one point
-- **WHEN** a user has logged weight on Monday, Wednesday, and Friday of the same calendar week
-- **THEN** the weekly series has exactly one point for that week, positioned at that week's start date, with value equal to the average of the three entries
+#### Scenario: Chart with logged weights
+- **WHEN** a user with logged weights opens the dashboard
+- **THEN** the chart SHALL show the trend line and the daily points, with no Trend/Daily/Weekly/Monthly toggle buttons
 
-#### Scenario: Logs in different weeks produce separate points
-- **WHEN** a user has weight logs spread across four different calendar weeks (at least one log per week)
-- **THEN** the weekly series has exactly four points, one per week, each positioned at its week's start date
+### Requirement: Daily series is one point per logged day
+The daily series SHALL have exactly one point per weight log entry (one per calendar day), with that day's value in the user's unit, drawn as dots joined by a thin, muted line so the trend reads as the primary line.
 
-### Requirement: Monthly average is one point per calendar month
-The system SHALL compute the monthly series on the progress chart as one data point per calendar month that contains at least one weight log entry, with the point's value equal to the average of that month's entries and the point's timestamp equal to the start of that month.
-
-#### Scenario: Multiple logs in the same month collapse to one point
-- **WHEN** a user has logged weight ten times within the same calendar month
-- **THEN** the monthly series has exactly one point for that month, positioned at that month's start date, with value equal to the average of all ten entries
-
-#### Scenario: Logs in different months produce separate points
-- **WHEN** a user has weight logs spread across six different calendar months (at least one log per month)
-- **THEN** the monthly series has exactly six points, one per month, each positioned at its month's start date
-
-### Requirement: Daily series remains one point per log entry
-The system SHALL continue to render the daily series with exactly one point per weight log entry, unaffected by the weekly/monthly aggregation change.
-
-#### Scenario: Daily series is unchanged
+#### Scenario: Daily series matches logs
 - **WHEN** a user has logged weight on 20 distinct days
-- **THEN** the daily series has exactly 20 points, one per logged day, each with that day's raw value
-
-### Requirement: All series share one time-scaled chart
-The system SHALL render the daily, weekly, and monthly series on a single chart sharing one continuous time-based x-axis, such that each series' points are positioned at their true calendar date regardless of the other series' point density.
-
-#### Scenario: Sparse monthly points align correctly against dense daily points
-- **WHEN** the chart shows both the daily series (one point per log) and the monthly series (one point per month) for the same underlying data
-- **THEN** each monthly point renders at its month-start x-position on the same axis used by the daily points, without being forced onto a daily point's timestamp
-
-### Requirement: Window preset filters all series consistently
-The system SHALL apply the selected time-window preset (1M/3M/6M/1Y/All) to the weekly and monthly series using the same cutoff date used for the daily series, so that toggling a preset restricts all visible series to the same date range.
-
-#### Scenario: Selecting a window preset filters weekly and monthly points too
-- **WHEN** a user selects the "3M" window preset
-- **THEN** the weekly and monthly series only show points whose period falls within the last 3 months, consistent with the daily series' filtering
+- **THEN** the daily series has exactly 20 points, one per logged day, each with that day's value
 
 ### Requirement: Trend line on the progress chart
-The progress chart SHALL offer a "Trend" series showing the EWMA trend weight (as defined by the dashboard summary) at each logged day, toggleable like the other series and visible by default.
+The trend series SHALL show the EWMA trend weight (as defined by the dashboard summary) at each logged day, drawn as the emphasized line without dots.
 
-#### Scenario: Trend shown by default
-- **WHEN** a user opens the dashboard for the first time with logged weights
-- **THEN** the chart SHALL show the trend line together with the daily series
+#### Scenario: Trend follows logged days
+- **WHEN** the chart is rendered for a user with logged weights
+- **THEN** the trend series SHALL have one value per logged day, equal to the dashboard's trend weight at that day
+
+### Requirement: Time-scaled x-axis
+Both series SHALL share one continuous time-based x-axis spanning the first to the last logged day in the selected window, so a gap in logging stretches that section of the chart instead of placing distant entries side by side.
+
+#### Scenario: Gap in logging
+- **WHEN** a user logged nothing for three weeks between two weigh-ins
+- **THEN** the two points SHALL be three weeks apart on the x-axis
+
+### Requirement: Window preset filters the chart
+The selected time-window preset (1M/3M/6M/1Y/All) SHALL restrict both series to the same cutoff day used by the dashboard summary's window change. The selected preset SHALL be remembered per browser.
+
+#### Scenario: Selecting a window preset
+- **WHEN** a user selects the "3M" window preset
+- **THEN** the chart SHALL show only daily and trend points from the last 3 months of logged data
 
 ### Requirement: Weight axis uses nice bounds
-The weight y-axis domain SHALL be derived from the visible weight series and rounded outward to "nice" tick steps (1, 2, 2.5 or 5 × 10ⁿ), with the ticks at those steps.
+The weight y-axis domain SHALL be derived from the visible daily and trend values and rounded outward to "nice" tick steps (1, 2, 2.5 or 5 × 10ⁿ), with the ticks at those steps.
 
 #### Scenario: Rounded domain
 - **WHEN** visible weights range from 78.37 to 81.92
 - **THEN** the axis SHALL span 78 to 82 with ticks every 0.5 or 1 unit, not raw data bounds
 
-### Requirement: X-axis spans only visible series
-The time axis of the progress chart SHALL span only the dates of weight series that are currently visible (trend, daily, weekly, monthly per their toggles) within the selected window. When no series is visible, the axis SHALL fall back to spanning all series in the window.
-
-#### Scenario: Hidden monthly series does not stretch the axis
-- **WHEN** the monthly series is hidden and the earliest daily log in the window is Sep 12 while the monthly point for September sits on Sep 1
-- **THEN** the x-axis SHALL start at Sep 12, not Sep 1
-
-#### Scenario: Nothing visible
-- **WHEN** every series toggle is off
-- **THEN** the x-axis SHALL span all series' dates in the window
-
 ### Requirement: Progress chart shows weight only
-The progress chart SHALL plot only weight series (trend, daily, weekly, monthly). Calorie intake and body fat SHALL NOT be drawn on the progress chart, in a secondary panel or otherwise; they remain visible as numbers in the dashboard summary.
+The progress chart SHALL plot only weight (daily and trend). Calorie intake and body fat SHALL NOT be drawn on the progress chart, in a secondary panel or otherwise; they remain visible as numbers in the dashboard summary.
 
 #### Scenario: Calorie and body fat data exist
 - **WHEN** the user has calorie logs and body-fat readings in the selected window
