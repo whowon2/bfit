@@ -1,7 +1,7 @@
 # dashboard-summary Specification
 
 ## Purpose
-Dashboard summary statistics derived from logged data (EWMA trend weight, least-squares weekly rate, window change, body fat vs target with projection, calories vs target) plus a reserved maintenance-calories slot for adaptive TDEE.
+Dashboard summary statistics derived from logged data (EWMA trend weight, least-squares weekly rate, window change, body fat vs target with projection, calories vs target) plus the maintenance-calories tile (adaptive, blended or formula) that drives the calorie target.
 ## Requirements
 ### Requirement: Trend weight is an exponentially weighted moving average
 The system SHALL compute a trend weight per logged day as a time-aware EWMA of daily weights in kg, with smoothing factor α = 0.1 per day and an effective factor of `1 − (1 − α)^gapDays` across gaps, seeded with the first weight. The current trend weight is the trend value at the latest logged day, displayed in the user's unit.
@@ -51,16 +51,24 @@ The dashboard's today card (the quick log) SHALL show whether a weight is logged
 - **THEN** the today indicator SHALL read "not logged yet"
 
 ### Requirement: Today's calories vs target
-When a profile exists and a target is computable, the summary SHALL show today's logged calories (calorie log row for today in the user's timezone) against the target calories, or the target alone when nothing is logged today.
+When a profile exists and a target is computable, the summary SHALL show today's logged calories (calorie log row for today in the user's timezone) against the target calories, or the target alone when nothing is logged today. The target SHALL be the chosen maintenance (adaptive, blended or formula) plus the goal-constrained daily change.
 
 #### Scenario: Calories logged today
 - **WHEN** today's calorie row has 1800 kcal and the target is 2200 kcal
 - **THEN** the tile SHALL show 1800 of 2200 kcal
 
+#### Scenario: Target follows adaptive maintenance
+- **WHEN** the adaptive maintenance is 2900 kcal and the goal-constrained change is −500 kcal
+- **THEN** the target SHALL be 2400 kcal
+
 ### Requirement: Reserved maintenance slot
-The summary SHALL include a maintenance-calories tile whose data carries a `source` of `formula` or `adaptive`. This change SHALL fill it with the profile's formula TDEE (`source: "formula"`) and MUST NOT compute an adaptive estimate; a later change fills `adaptive`.
+The summary SHALL include a maintenance-calories tile showing the maintenance that drives targets, with a `source` of `adaptive`, `blended` or `formula`, a short subtitle naming the source (and confidence when not formula), and an info tooltip that explains how it was computed (window, logged days, weigh-ins, average intake, weekly rate) or why it fell back to the formula.
+
+#### Scenario: Profile exists, enough data
+- **WHEN** the user has a profile and a complete 28-day window of calories and weigh-ins
+- **THEN** the maintenance tile SHALL show the observed estimate with source `adaptive`
 
 #### Scenario: Profile exists
-- **WHEN** the user has a profile and a logged weight
-- **THEN** the maintenance tile SHALL show the formula TDEE labeled as a formula estimate
+- **WHEN** the user has a profile and a logged weight but only a few days of calories
+- **THEN** the maintenance tile SHALL show the formula TDEE labeled as a formula estimate and the tooltip SHALL say why the adaptive estimate is unavailable
 

@@ -7,7 +7,7 @@ The summary SHALL include a maintenance-calories tile showing the maintenance th
 - **WHEN** the user has a profile and a complete 28-day window of calories and weigh-ins
 - **THEN** the maintenance tile SHALL show the observed estimate with source `adaptive`
 
-#### Scenario: Profile exists, sparse data
+#### Scenario: Profile exists
 - **WHEN** the user has a profile and a logged weight but only a few days of calories
 - **THEN** the maintenance tile SHALL show the formula TDEE labeled as a formula estimate and the tooltip SHALL say why the adaptive estimate is unavailable
 
