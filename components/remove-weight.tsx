@@ -33,21 +33,26 @@ export function RemoveWeightButton({ weightId }: { weightId: number }) {
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" disabled={isPending}>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={isPending}
+          aria-label="Delete weigh-in"
+        >
           <X size={14} />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Delete this weigh-in?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently your weight and
-            remove your data from our servers.
+            This permanently deletes the weight and body fat logged for this
+            day. It can&apos;t be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleRemove}>Continue</AlertDialogAction>
+          <AlertDialogAction onClick={handleRemove}>Delete</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

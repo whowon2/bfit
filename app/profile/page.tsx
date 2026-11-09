@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ImportNutritionButton } from "@/components/import-nutrition";
 import {
   Card,
   CardContent,
@@ -107,21 +107,55 @@ export default async function ProfilePage() {
     redirect("/auth/signin");
   }
 
-  const profile = await getProfile(session.user.id);
-
-  const latestBodyFat = await getLatestBodyFat(session.user.id);
+  const userId = session.user.id;
+  const weightUnit = toWeightUnit(session.user.weightUnit);
+  const [profile, latestWeight, latestBodyFat, history] = await Promise.all([
+    getProfile(userId),
+    getLatestWeight(userId),
+    getLatestBodyFat(userId),
+    getProfileHistory(userId),
+  ]);
+  const weightKg = latestWeight ? Number(latestWeight.value) : null;
   const currentBodyFat = latestBodyFat?.bodyFatPercent
     ? Number(latestBodyFat.bodyFatPercent)
     : null;
 
   if (!profile) {
-    return <CreateProfileForm currentBodyFat={currentBodyFat} />;
+    // Optional step: the dashboard works without a profile; this unlocks
+    // calorie and macro targets, previewed from the latest logged weight.
+    return (
+      <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
+        <div className="flex max-w-lg flex-col gap-1">
+          <h1 className="font-bold text-2xl">Set up your profile</h1>
+          <p className="text-muted-foreground text-sm">
+            Your age, height, activity and goal turn your logged weight into
+            daily calorie and macro targets. You can change any of it later.
+          </p>
+          {weightKg === null && (
+            <p className="text-muted-foreground text-sm">
+              No weight logged yet —{" "}
+              <Link
+                href="/dashboard"
+                className="text-foreground underline underline-offset-4"
+              >
+                log one on the dashboard
+              </Link>{" "}
+              to see full targets.
+            </p>
+          )}
+        </div>
+        <Card className="w-full">
+          <CardContent>
+            <CreateProfileForm
+              weightKg={weightKg}
+              weightUnit={weightUnit}
+              currentBodyFat={currentBodyFat}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  const latestWeight = await getLatestWeight(session.user.id);
-  const weightKg = latestWeight ? Number(latestWeight.value) : null;
-
-  const history = await getProfileHistory(session.user.id);
 
   return (
     <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">
@@ -134,21 +168,9 @@ export default async function ProfilePage() {
           <UpdateProfileForm
             profile={profile}
             weightKg={weightKg}
-            weightUnit={toWeightUnit(session.user.weightUnit)}
+            weightUnit={weightUnit}
             currentBodyFat={currentBodyFat}
           />
-        </CardContent>
-      </Card>
-
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Nutrition data</CardTitle>
-          <CardDescription>
-            Import your daily calories/macros from a MyFitnessPal export.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ImportNutritionButton />
         </CardContent>
       </Card>
 

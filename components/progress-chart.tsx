@@ -1,7 +1,6 @@
 "use client";
 
-import { format, startOfMonth, startOfWeek, sub } from "date-fns";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { format, startOfMonth, startOfWeek } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
@@ -9,18 +8,10 @@ import {
   ComposedChart,
   Line,
   XAxis,
-  type XAxisTickContentProps,
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
@@ -30,12 +21,23 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { CalorieLog, Weight } from "@/db/schema";
+import {
+  isWindowPreset,
+  WINDOW_PRESETS,
+  type WindowPreset,
+  windowStartDay,
+} from "@/lib/chart-window";
 import { parseDay } from "@/lib/dates";
-import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
-
-export const description = "A multiple line chart";
+import { type DayPoint, niceDomain } from "@/lib/trend";
+import {
+  displayWeight,
+  kgToUnit,
+  roundForUnit,
+  type WeightUnit,
+} from "@/lib/units";
 
 const chartConfig = {
+  trend: { label: "Trend", color: "var(--foreground)" },
   daily: { label: "Daily", color: "var(--chart-1)" },
   weekly: { label: "Weekly", color: "var(--chart-2)" },
   monthly: { label: "Monthly", color: "var(--chart-3)" },
@@ -43,23 +45,17 @@ const chartConfig = {
   bodyFat: { label: "Body fat", color: "var(--chart-5)" },
 } satisfies ChartConfig;
 
-const AVERAGES = ["daily", "weekly", "monthly"] as const;
+const AVERAGES = ["trend", "daily", "weekly", "monthly"] as const;
 type Average = (typeof AVERAGES)[number];
-
-const WINDOW_PRESETS = ["1M", "3M", "6M", "1Y", "All"] as const;
-type WindowPreset = (typeof WINDOW_PRESETS)[number];
-
-const WINDOW_MONTHS: Record<Exclude<WindowPreset, "All">, number> = {
-  "1M": 1,
-  "3M": 3,
-  "6M": 6,
-  "1Y": 12,
-};
+const DEFAULT_AVERAGES: Average[] = ["trend", "daily"];
 
 const SYNC_ID = "progress-chart";
 const PREFS_KEY = "bfit.progress-chart-prefs";
+// v2 added the trend series; older saved prefs get it switched on once.
+const PREFS_VERSION = 2;
 
 interface ChartPrefs {
+  version: number;
   windowPreset: WindowPreset;
   visibleAvgs: Average[];
   showCalories: boolean;
@@ -88,6 +84,11 @@ interface DailyPoint {
   daily: number;
 }
 
+interface TrendPoint {
+  date: number;
+  trend: number;
+}
+
 interface PeriodPoint {
   date: number; // period start timestamp
   value: number;
@@ -105,6 +106,7 @@ interface BodyFatPoint {
 
 interface ChartRow {
   date: number;
+  trend?: number;
   daily?: number;
   weekly?: number;
   monthly?: number;
@@ -122,6 +124,7 @@ interface ChartRow {
 // panels' index spaces identical. Every point's `date` is already a stored
 // calendar day (local midnight via parseDay), so rows key on it directly.
 function mergeChartRows(
+  trendPoints: TrendPoint[],
   dailyPoints: DailyPoint[],
   weeklyPoints: PeriodPoint[],
   monthlyPoints: PeriodPoint[],
@@ -138,6 +141,7 @@ function mergeChartRows(
     }
   };
 
+  for (const p of trendPoints) upsert(p.date, { trend: p.trend });
   for (const p of dailyPoints) upsert(p.date, { daily: p.daily });
   for (const p of weeklyPoints) upsert(p.date, { weekly: p.value });
   for (const p of monthlyPoints) upsert(p.date, { monthly: p.value });
@@ -228,35 +232,27 @@ function buildBodyFatPoints(weights: Weight[]): BodyFatPoint[] {
     .sort((a, b) => a.date - b.date);
 }
 
-const CustomizedAxisTick = ({ x, y, payload }: XAxisTickContentProps) => {
-  return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        x={0}
-        y={0}
-        dy={16}
-        textAnchor="end"
-        fill="#666"
-        transform="rotate(-55)"
-      >
-        {format(new Date(Number(payload.value)), "dd/MM/yyyy")}
-      </text>
-    </g>
-  );
-};
+const formatTick = (value: number) => format(new Date(value), "MMM d");
 
 export function Chart({
   weights,
   calories,
+  trend,
   unit,
+  windowPreset,
+  onWindowPresetChange: setWindowPreset,
 }: {
   weights: Weight[];
   calories: CalorieLog[];
+  /** EWMA trend in kg, one point per logged day (see lib/trend.ts). */
+  trend: DayPoint[];
   unit: WeightUnit;
+  /** Controlled so the dashboard summary can follow the same window. */
+  windowPreset: WindowPreset;
+  onWindowPresetChange: (preset: WindowPreset) => void;
 }) {
-  const [windowPreset, setWindowPreset] = useState<WindowPreset>("1Y");
   const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
-    new Set(AVERAGES),
+    new Set(DEFAULT_AVERAGES),
   );
   const [showCalories, setShowCalories] = useState(true);
   const [showBodyFat, setShowBodyFat] = useState(true);
@@ -267,13 +263,13 @@ export function Chart({
   // render before hydration swaps in the saved values.
   useEffect(() => {
     const prefs = loadPrefs();
-    if (prefs.windowPreset && WINDOW_PRESETS.includes(prefs.windowPreset)) {
+    if (isWindowPreset(prefs.windowPreset)) {
       setWindowPreset(prefs.windowPreset);
     }
-    if (prefs.visibleAvgs) {
-      setVisibleAvgs(
-        new Set(prefs.visibleAvgs.filter((a) => AVERAGES.includes(a))),
-      );
+    if (Array.isArray(prefs.visibleAvgs)) {
+      const saved = prefs.visibleAvgs.filter((a) => AVERAGES.includes(a));
+      if ((prefs.version ?? 1) < PREFS_VERSION) saved.unshift("trend");
+      setVisibleAvgs(new Set(saved));
     }
     if (typeof prefs.showCalories === "boolean") {
       setShowCalories(prefs.showCalories);
@@ -282,11 +278,13 @@ export function Chart({
       setShowBodyFat(prefs.showBodyFat);
     }
     hasLoadedPrefs.current = true;
-  }, []);
+    // setWindowPreset is the parent's (stable) state setter: runs once.
+  }, [setWindowPreset]);
 
   useEffect(() => {
     if (!hasLoadedPrefs.current) return;
     savePrefs({
+      version: PREFS_VERSION,
       windowPreset,
       visibleAvgs: [...visibleAvgs],
       showCalories,
@@ -294,8 +292,8 @@ export function Chart({
     });
   }, [windowPreset, visibleAvgs, showCalories, showBodyFat]);
 
-  // Stored values are kg; convert once so every weight series (and the trend
-  // footer) is in the user's unit. Body fat % is unit-independent.
+  // Stored values are kg; convert once so every weight series is in the
+  // user's unit. Body fat % is unit-independent.
   const unitWeights = useMemo(
     () =>
       weights.map((w) => ({
@@ -306,6 +304,14 @@ export function Chart({
   );
 
   const dailyData = useMemo(() => buildDailyPoints(unitWeights), [unitWeights]);
+  const trendData = useMemo(
+    (): TrendPoint[] =>
+      trend.map((p) => ({
+        date: parseDay(p.day).getTime(),
+        trend: roundForUnit(kgToUnit(p.kg, unit), unit),
+      })),
+    [trend, unit],
+  );
   const weeklyData = useMemo(
     () => buildWeeklyPoints(unitWeights, unit),
     [unitWeights, unit],
@@ -317,13 +323,20 @@ export function Chart({
   const calorieData = useMemo(() => buildCaloriePoints(calories), [calories]);
   const bodyFatData = useMemo(() => buildBodyFatPoints(weights), [weights]);
 
+  // Same cutoff day as the dashboard summary's window change.
   const cutoff = useMemo(() => {
-    if (windowPreset === "All" || dailyData.length === 0) return null;
-    const last = dailyData[dailyData.length - 1].date;
-    return sub(new Date(last), {
-      months: WINDOW_MONTHS[windowPreset],
-    }).getTime();
-  }, [dailyData, windowPreset]);
+    const lastDay = weights.reduce<string | null>(
+      (max, w) => (max === null || w.date > max ? w.date : max),
+      null,
+    );
+    const start = windowStartDay(lastDay, windowPreset);
+    return start === null ? null : parseDay(start).getTime();
+  }, [weights, windowPreset]);
+
+  const visibleTrendData = useMemo(() => {
+    if (cutoff === null) return trendData;
+    return trendData.filter((p) => p.date >= cutoff);
+  }, [trendData, cutoff]);
 
   const visibleData = useMemo(() => {
     if (cutoff === null) return dailyData;
@@ -353,6 +366,7 @@ export function Chart({
   const chartData = useMemo(
     () =>
       mergeChartRows(
+        visibleTrendData,
         visibleData,
         visibleWeeklyData,
         visibleMonthlyData,
@@ -360,6 +374,7 @@ export function Chart({
         visibleBodyFatData,
       ),
     [
+      visibleTrendData,
       visibleData,
       visibleWeeklyData,
       visibleMonthlyData,
@@ -390,14 +405,27 @@ export function Chart({
     visibleBodyFatData,
   ]);
 
-  const trend = useMemo(() => {
-    if (visibleData.length < 2) return null;
-    const first = visibleData[0].daily;
-    const last = visibleData[visibleData.length - 1].daily;
-    const delta = roundForUnit(last - first, unit);
-    const pct = first !== 0 ? Math.round((delta / first) * 1000) / 10 : 0;
-    return { delta, pct };
-  }, [visibleData, unit]);
+  // Weight axis bounds from the visible weight series, rounded to nice steps.
+  const yAxis = useMemo(() => {
+    const values = [
+      ...(visibleAvgs.has("trend") ? visibleTrendData.map((p) => p.trend) : []),
+      ...(visibleAvgs.has("daily") ? visibleData.map((p) => p.daily) : []),
+      ...(visibleAvgs.has("weekly")
+        ? visibleWeeklyData.map((p) => p.value)
+        : []),
+      ...(visibleAvgs.has("monthly")
+        ? visibleMonthlyData.map((p) => p.value)
+        : []),
+    ];
+    if (values.length === 0) return null;
+    return niceDomain(Math.min(...values), Math.max(...values));
+  }, [
+    visibleAvgs,
+    visibleTrendData,
+    visibleData,
+    visibleWeeklyData,
+    visibleMonthlyData,
+  ]);
 
   function toggleAverage(avg: Average) {
     setVisibleAvgs((prev) => {
@@ -412,15 +440,33 @@ export function Chart({
   }
 
   return (
-    <Card className="w-full flex flex-col h-[500px] lg:h-full lg:flex-1">
-      <CardHeader>
-        <CardTitle>Progress</CardTitle>
-        <CardAction className="flex gap-1">
+    <Card className="flex h-[460px] w-full min-w-0 flex-col gap-4 sm:h-[520px] lg:h-full">
+      <CardHeader className="flex flex-wrap items-center gap-2">
+        <CardTitle className="mr-auto">Progress</CardTitle>
+        <fieldset className="flex flex-wrap gap-1">
+          <legend className="sr-only">Window</legend>
+          {WINDOW_PRESETS.map((preset) => (
+            <Button
+              key={preset}
+              size="sm"
+              variant={windowPreset === preset ? "secondary" : "ghost"}
+              aria-pressed={windowPreset === preset}
+              onClick={() => setWindowPreset(preset)}
+            >
+              {preset}
+            </Button>
+          ))}
+        </fieldset>
+      </CardHeader>
+      <CardContent className="w-full flex flex-1 flex-col min-h-0">
+        <fieldset className="flex flex-wrap gap-1 pb-3">
+          <legend className="sr-only">Series</legend>
           {AVERAGES.map((avg) => (
             <Button
               key={avg}
               size="sm"
               variant={visibleAvgs.has(avg) ? "default" : "outline"}
+              aria-pressed={visibleAvgs.has(avg)}
               onClick={() => toggleAverage(avg)}
             >
               {chartConfig[avg].label}
@@ -430,6 +476,7 @@ export function Chart({
             <Button
               size="sm"
               variant={showCalories ? "default" : "outline"}
+              aria-pressed={showCalories}
               onClick={() => setShowCalories((prev) => !prev)}
             >
               {chartConfig.calories.label}
@@ -439,26 +486,13 @@ export function Chart({
             <Button
               size="sm"
               variant={showBodyFat ? "default" : "outline"}
+              aria-pressed={showBodyFat}
               onClick={() => setShowBodyFat((prev) => !prev)}
             >
               {chartConfig.bodyFat.label}
             </Button>
           )}
-        </CardAction>
-      </CardHeader>
-      <CardContent className="w-full flex flex-1 flex-col min-h-0">
-        <div className="flex gap-1 pb-4">
-          {WINDOW_PRESETS.map((preset) => (
-            <Button
-              key={preset}
-              size="sm"
-              variant={windowPreset === preset ? "default" : "outline"}
-              onClick={() => setWindowPreset(preset)}
-            >
-              {preset}
-            </Button>
-          ))}
-        </div>
+        </fieldset>
 
         <ChartContainer
           config={chartConfig}
@@ -472,10 +506,7 @@ export function Chart({
             accessibilityLayer
             syncId={SYNC_ID}
             data={chartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
+            margin={{ left: 0, right: 8 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -484,18 +515,24 @@ export function Chart({
               domain={xDomain ?? ["dataMin", "dataMax"]}
               allowDuplicatedCategory={false}
               scale="time"
-              tick={false}
               axisLine={false}
               tickLine={false}
-              height={hasIndicators ? 4 : 100}
-              {...(!hasIndicators && { tick: CustomizedAxisTick, angle: -80 })}
+              {...(hasIndicators
+                ? { tick: false, height: 4 }
+                : {
+                    tickFormatter: formatTick,
+                    tickMargin: 8,
+                    minTickGap: 32,
+                    height: 28,
+                  })}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={40}
-              domain={["dataMin", "dataMax"]} // 🔑 dynamic range
-              tickCount={10}
+              width={44}
+              domain={yAxis?.domain ?? ["auto", "auto"]}
+              ticks={yAxis?.ticks}
+              allowDataOverflow
             />
             <ChartTooltip
               cursor={false}
@@ -513,8 +550,20 @@ export function Chart({
                 dataKey="daily"
                 type="monotone"
                 stroke="var(--color-daily)"
-                strokeWidth={2}
+                strokeWidth={visibleAvgs.has("trend") ? 1 : 2}
+                strokeOpacity={visibleAvgs.has("trend") ? 0.5 : 1}
                 dot={{ r: 2 }}
+                connectNulls
+              />
+            )}
+            {visibleAvgs.has("trend") && (
+              <Line
+                name="trend"
+                dataKey="trend"
+                type="monotone"
+                stroke="var(--color-trend)"
+                strokeWidth={2.5}
+                dot={false}
                 connectNulls
               />
             )}
@@ -553,10 +602,7 @@ export function Chart({
               accessibilityLayer
               syncId={SYNC_ID}
               data={chartData}
-              margin={{
-                left: 12,
-                right: 12,
-              }}
+              margin={{ left: 0, right: 8 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
@@ -568,15 +614,15 @@ export function Chart({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                height={100}
-                angle={-80}
-                tick={CustomizedAxisTick}
+                minTickGap={32}
+                height={28}
+                tickFormatter={formatTick}
               />
               <YAxis
                 yAxisId="calories"
                 tickLine={false}
                 axisLine={false}
-                width={40}
+                width={44}
                 domain={[0, "dataMax"]}
                 tickCount={4}
               />
@@ -625,30 +671,6 @@ export function Chart({
           </ChartContainer>
         )}
       </CardContent>
-      {trend && (
-        <CardFooter>
-          <div className="flex w-full items-start gap-2 text-sm">
-            <div className="grid gap-2">
-              <div className="flex items-center gap-2 leading-none font-medium">
-                {trend.delta === 0
-                  ? "Weight steady"
-                  : trend.delta > 0
-                    ? `Up ${trend.delta} ${unit} (${trend.pct}%)`
-                    : `Down ${Math.abs(trend.delta)} ${unit} (${Math.abs(trend.pct)}%)`}
-                {trend.delta >= 0 ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )}
-              </div>
-              <div className="text-muted-foreground flex items-center gap-2 leading-none">
-                Over the selected{" "}
-                {windowPreset === "All" ? "history" : windowPreset} window
-              </div>
-            </div>
-          </div>
-        </CardFooter>
-      )}
     </Card>
   );
 }

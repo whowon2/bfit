@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { DataSection } from "@/components/data-section";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimezoneSelect } from "@/components/timezone-select";
 import {
@@ -11,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { WeightUnitSelect } from "@/components/weight-unit-select";
 import { auth } from "@/lib/auth";
+import { getCalorieEntries } from "@/lib/queries/calorie";
+import { getWeightEntries } from "@/lib/queries/weight";
 import { toWeightUnit } from "@/lib/units";
 
 export default async function SettingsPage() {
@@ -21,6 +24,11 @@ export default async function SettingsPage() {
   if (!session) {
     redirect("/auth/signin");
   }
+
+  const [weights, calories] = await Promise.all([
+    getWeightEntries(session.user.id),
+    getCalorieEntries(session.user.id),
+  ]);
 
   const weightUnit = toWeightUnit(session.user.weightUnit);
   const timezone = session.user.timezone ?? null;
@@ -35,7 +43,8 @@ export default async function SettingsPage() {
       <div className="w-full">
         <h1 className="font-bold text-2xl">Settings</h1>
         <p className="text-muted-foreground text-sm">
-          App preferences. Edit your profile and goals from the Profile page.
+          Preferences and your data. Edit your profile and goals from the
+          Profile page.
         </p>
       </div>
 
@@ -77,6 +86,8 @@ export default async function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <DataSection weights={weights} calories={calories} />
     </div>
   );
 }

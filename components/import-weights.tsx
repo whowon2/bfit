@@ -2,63 +2,84 @@
 
 import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { toast } from "sonner";
 import { importWeightEntries } from "@/actions/weight";
-import { parseWeightImport } from "@/lib/weight-import";
+import { importSummary, pickFile } from "@/lib/import-feedback";
+import { type ImportRow, parseWeightImport } from "@/lib/weight-import";
 import { Button } from "./ui/button";
+
+// Mirrors the server's row checks so unusable rows are counted as skipped
+// instead of failing the whole file (the server still re-validates).
+function isUsable(r: ImportRow): boolean {
+  return (
+    Number.isFinite(r.value) &&
+    r.value > 0 &&
+    r.value < 1000 &&
+    (r.date !== null || r.measuredAt !== null) &&
+    (r.bodyFatPercent === null ||
+      (Number.isFinite(r.bodyFatPercent) &&
+        r.bodyFatPercent >= 0 &&
+        r.bodyFatPercent <= 100))
+  );
+}
 
 export function ImportWeightsButton() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  function handleImport() {
-    setError(null);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
+  async function handleImport() {
+    const file = await pickFile("application/json,.json");
+    if (!file) return;
 
-    input.onchange = () => {
-      if (!input.files?.length) return;
-      const file = input.files[0];
+    startTransition(async () => {
+      let data: unknown;
+      try {
+        data = JSON.parse(await file.text());
+      } catch {
+        toast.error(`${file.name} isn't valid JSON.`);
+        return;
+      }
 
-      startTransition(async () => {
-        try {
-          const text = await file.text();
-          const data = JSON.parse(text);
+      let rows: ImportRow[];
+      try {
+        // Normalized to kg from the file's declared unit.
+        rows = parseWeightImport(data);
+      } catch {
+        toast.error(
+          "Unrecognized file. Use a BFit weights export or a Lyfta weight export.",
+        );
+        return;
+      }
 
-          // Normalized to kg from the file's declared unit.
-          const weights = parseWeightImport(data);
+      const usable = rows.filter(isUsable);
+      const dropped = rows.length - usable.length;
+      if (usable.length === 0) {
+        toast.error("No weigh-ins with a date and weight found in that file.");
+        return;
+      }
 
-          await importWeightEntries(weights);
-          router.refresh();
-        } catch (err) {
-          console.error("Invalid JSON file", err);
-          setError("Import failed — invalid JSON file.");
-        }
-      });
-    };
-
-    // ⬇️ trigger file picker
-    input.click();
+      try {
+        const result = await importWeightEntries(usable);
+        toast.success(
+          importSummary("weights", {
+            ...result,
+            skipped: result.skipped + dropped,
+          }),
+        );
+        router.refresh();
+      } catch {
+        toast.error(
+          "The import was rejected: some rows have invalid dates or values. Nothing was saved.",
+        );
+      }
+    });
   }
 
   return (
-    <div className="relative flex-1">
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={handleImport}
-        disabled={isPending}
-      >
-        <Upload className="h-4 w-4" />
-        {isPending ? "Importing..." : "Import JSON"}
-      </Button>
-      {error && (
-        <span className="absolute top-full left-0 mt-1 whitespace-nowrap text-destructive text-sm">
-          {error}
-        </span>
-      )}
-    </div>
+    <Button variant="outline" onClick={handleImport} disabled={isPending}>
+      <Upload />
+      {isPending ? "Importing…" : "Import JSON"}
+    </Button>
   );
 }

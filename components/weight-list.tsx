@@ -1,19 +1,20 @@
 "use client";
 
 import { format } from "date-fns";
-import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
-import WeightForm from "@/components/add-weight";
 import type { Weight } from "@/db/schema";
 import { formatTimeInTimeZone, parseDay } from "@/lib/dates";
 import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { EditWeightButton } from "./edit-weight";
-import { ExportJsonButton } from "./export-json";
-import { ImportWeightsButton } from "./import-weights";
 import { RemoveWeightButton } from "./remove-weight";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 
 export function WeightList({
   weights,
@@ -24,8 +25,6 @@ export function WeightList({
   unit: WeightUnit;
   timeZone: string;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-
   // `date` is the stored calendar day ("YYYY-MM-DD"), so string order is date order.
   const sorted = [...weights].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -64,145 +63,120 @@ export function WeightList({
   });
 
   return (
-    <Card
-      className={cn(
-        "h-[500px] lg:h-full transition-[width,max-width] duration-200 overflow-hidden",
-        collapsed ? "w-14 lg:max-w-14" : "w-full lg:max-w-xs",
-      )}
-    >
-      <CardHeader
-        className="cursor-pointer select-none"
-        onClick={() => setCollapsed((c) => !c)}
-      >
-        <CardTitle
-          className={cn(
-            "flex items-center",
-            collapsed ? "justify-center" : "justify-between",
-          )}
-        >
-          {!collapsed && "Weights"}
-          <ChevronDown
-            className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-              collapsed && "-rotate-90",
-            )}
-          />
-        </CardTitle>
+    // Fixed-height scroll area when stacked (phones); matches the chart's
+    // height beside it on large screens.
+    <Card className="flex h-[420px] min-w-0 flex-col gap-3 overflow-hidden lg:h-full">
+      <CardHeader>
+        <CardTitle>History</CardTitle>
+        <CardDescription>
+          {weights.length} weigh-in{weights.length === 1 ? "" : "s"}
+        </CardDescription>
       </CardHeader>
-      {!collapsed && (
-        <CardContent className="flex-1 min-h-0 overflow-hidden px-2 flex flex-col">
-          <div className="shrink-0">
-            <WeightForm unit={unit} />
-            <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
-              <ImportWeightsButton />
-              <ExportJsonButton weights={weights} />
-            </div>
-          </div>
-          <div className="flex-1 min-h-0 overflow-auto">
-            <AnimatePresence initial={false}>
-              {sorted.map((w, i) => {
-                const month = format(parseDay(w.date), "MMMM yyyy");
-                const showMonth =
-                  i === 0 ||
-                  month !== format(parseDay(sorted[i - 1].date), "MMMM yyyy");
-                return (
-                  <motion.div
-                    key={w.id}
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                  >
-                    {showMonth &&
-                      (() => {
-                        const stats = monthStats.get(month);
-                        return (
-                          <div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-1">
-                            <span className="text-muted-foreground shrink-0 text-xs font-semibold uppercase tracking-wide">
-                              {month}
-                            </span>
-                            <hr className="border-border flex-1" />
-                            {stats && (
-                              <span className="shrink-0 text-xs">
-                                <span className="font-medium">
-                                  {stats.avg.toFixed(1)} {unit}
-                                </span>
-                                {stats.diff !== null && (
-                                  <span
-                                    className={cn(
-                                      "ml-1 font-medium",
-                                      stats.diff > 0
-                                        ? "text-red-500"
-                                        : stats.diff < 0
-                                          ? "text-green-500"
-                                          : "text-muted-foreground",
-                                    )}
-                                  >
-                                    ({stats.diff > 0 ? "+" : ""}
-                                    {stats.diff.toFixed(1)} {unit})
-                                  </span>
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: -8,
-                        scale: 0.98,
-                        filter: "blur(4px)",
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                        filter: "blur(0px)",
-                      }}
-                      exit={{
-                        opacity: 0,
-                        y: 8,
-                        scale: 0.98,
-                        filter: "blur(4px)",
-                      }}
-                      transition={{ duration: 0.15, ease: "easeOut" }}
-                      className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-accent/50"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {displayWeight(w.value, unit)}
-                          <span className="text-muted-foreground ml-1 text-sm font-normal">
-                            {unit}
+      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <AnimatePresence initial={false}>
+            {sorted.map((w, i) => {
+              const month = format(parseDay(w.date), "MMMM yyyy");
+              const showMonth =
+                i === 0 ||
+                month !== format(parseDay(sorted[i - 1].date), "MMMM yyyy");
+              return (
+                <motion.div
+                  key={w.id}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {showMonth &&
+                    (() => {
+                      const stats = monthStats.get(month);
+                      return (
+                        <div className="flex items-center gap-2 px-2 pt-3 pb-1 first:pt-1">
+                          <span className="text-muted-foreground shrink-0 text-xs font-semibold uppercase tracking-wide">
+                            {month}
                           </span>
-                          {w.bodyFatPercent && (
-                            <span className="text-muted-foreground ml-1 text-sm font-normal">
-                              · {w.bodyFatPercent}% BF
+                          <hr className="border-border flex-1" />
+                          {stats && (
+                            <span className="shrink-0 text-xs">
+                              <span className="font-medium">
+                                {stats.avg.toFixed(1)} {unit}
+                              </span>
+                              {stats.diff !== null && (
+                                <span
+                                  className={cn(
+                                    "ml-1 font-medium",
+                                    stats.diff > 0
+                                      ? "text-red-500"
+                                      : stats.diff < 0
+                                        ? "text-green-500"
+                                        : "text-muted-foreground",
+                                  )}
+                                >
+                                  ({stats.diff > 0 ? "+" : ""}
+                                  {stats.diff.toFixed(1)} {unit})
+                                </span>
+                              )}
                             </span>
                           )}
+                        </div>
+                      );
+                    })()}
+                  <motion.div
+                    initial={{
+                      opacity: 0,
+                      y: -8,
+                      scale: 0.98,
+                      filter: "blur(4px)",
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      filter: "blur(0px)",
+                    }}
+                    exit={{
+                      opacity: 0,
+                      y: 8,
+                      scale: 0.98,
+                      filter: "blur(4px)",
+                    }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-accent/50"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {displayWeight(w.value, unit)}
+                        <span className="text-muted-foreground ml-1 text-sm font-normal">
+                          {unit}
                         </span>
-                        <span className="text-muted-foreground text-xs">
-                          {format(parseDay(w.date), "MMM d, yyyy")}
-                          {w.measuredAt &&
-                            ` · ${formatTimeInTimeZone(w.measuredAt, timeZone)}`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <EditWeightButton
-                          weight={w}
-                          unit={unit}
-                          timeZone={timeZone}
-                        />
-                        <RemoveWeightButton weightId={w.id} />
-                      </div>
-                    </motion.div>
+                        {w.bodyFatPercent && (
+                          <span className="text-muted-foreground ml-1 text-sm font-normal">
+                            · {w.bodyFatPercent}% BF
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {format(parseDay(w.date), "MMM d, yyyy")}
+                        {w.measuredAt &&
+                          ` · ${formatTimeInTimeZone(w.measuredAt, timeZone)}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <EditWeightButton
+                        weight={w}
+                        unit={unit}
+                        timeZone={timeZone}
+                      />
+                      <RemoveWeightButton weightId={w.id} />
+                    </div>
                   </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </CardContent>
-      )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </CardContent>
     </Card>
   );
 }

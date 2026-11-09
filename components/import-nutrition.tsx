@@ -2,66 +2,60 @@
 
 import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { toast } from "sonner";
 import { importCalorieEntries } from "@/actions/calorie";
+import { isDayString } from "@/lib/dates";
+import { importSummary, pickFile } from "@/lib/import-feedback";
 import { isMfpNutritionExport, parseMfpNutritionCsv } from "@/lib/mfp";
 import { Button } from "./ui/button";
 
 export function ImportNutritionButton() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  function handleImport() {
-    setError(null);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csv,text/csv";
+  async function handleImport() {
+    const file = await pickFile(".csv,text/csv");
+    if (!file) return;
 
-    input.onchange = () => {
-      if (!input.files?.length) return;
-      const file = input.files[0];
+    startTransition(async () => {
+      const text = await file.text();
+      if (!isMfpNutritionExport(text)) {
+        toast.error(
+          "Unrecognized file. Expected a MyFitnessPal Nutrition Summary CSV (first column Date, then Meal, Calories).",
+        );
+        return;
+      }
 
-      startTransition(async () => {
-        try {
-          const text = await file.text();
+      const days = parseMfpNutritionCsv(text);
+      const usable = days.filter((d) => isDayString(d.date));
+      const dropped = days.length - usable.length;
+      if (usable.length === 0) {
+        toast.error("No days with a valid date found in that file.");
+        return;
+      }
 
-          if (!isMfpNutritionExport(text)) {
-            setError(
-              "Unrecognized file — expected an MFP Nutrition Summary CSV.",
-            );
-            return;
-          }
-
-          const days = parseMfpNutritionCsv(text);
-          await importCalorieEntries(days);
-          router.refresh();
-        } catch (err) {
-          console.error("Invalid nutrition CSV file", err);
-          setError("Import failed — invalid CSV file.");
-        }
-      });
-    };
-
-    input.click();
+      try {
+        const result = await importCalorieEntries(usable);
+        toast.success(
+          importSummary("nutrition", {
+            ...result,
+            skipped: result.skipped + dropped,
+          }),
+        );
+        router.refresh();
+      } catch {
+        toast.error(
+          "The import was rejected: some days have invalid values. Nothing was saved.",
+        );
+      }
+    });
   }
 
   return (
-    <div className="relative flex-1">
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={handleImport}
-        disabled={isPending}
-      >
-        <Upload className="h-4 w-4" />
-        {isPending ? "Importing..." : "Import MFP Nutrition CSV"}
-      </Button>
-      {error && (
-        <span className="absolute top-full left-0 mt-1 whitespace-nowrap text-destructive text-sm">
-          {error}
-        </span>
-      )}
-    </div>
+    <Button variant="outline" onClick={handleImport} disabled={isPending}>
+      <Upload />
+      {isPending ? "Importing…" : "Import MFP CSV"}
+    </Button>
   );
 }

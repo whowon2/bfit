@@ -41,7 +41,7 @@ With a profile, the summary SHALL show the latest body fat against the profile's
 - **THEN** no date SHALL be shown, and the tile SHALL say the trend is moving away from the target
 
 ### Requirement: Today status
-The summary SHALL show whether a weight is logged for today in the user's timezone, with that day's value when it is.
+The dashboard's today card (the quick log) SHALL show whether a weight is logged for today in the user's timezone, with that day's value when it is.
 
 #### Scenario: Not yet logged
 - **WHEN** the latest entry is yesterday in the user's timezone

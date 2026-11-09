@@ -30,15 +30,19 @@ export function ExportJsonButton({ weights }: { weights: Weight[] }) {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "weights.json";
+    link.download = `bfit-weights-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
 
     URL.revokeObjectURL(url);
   }
 
   return (
-    <Button variant="outline" className="flex-1" onClick={handleExport}>
-      <Download className="h-4 w-4" />
+    <Button
+      variant="outline"
+      onClick={handleExport}
+      disabled={weights.length === 0}
+    >
+      <Download />
       Export JSON
     </Button>
   );

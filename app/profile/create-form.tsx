@@ -38,11 +38,16 @@ import {
   type ProfileFormValues,
   profileFormSchema,
 } from "@/lib/profile-schema";
+import { displayWeight, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 export function CreateProfileForm({
+  weightKg = null,
+  weightUnit = "kg",
   currentBodyFat = null,
 }: {
+  weightKg?: number | null;
+  weightUnit?: WeightUnit;
   currentBodyFat?: number | null;
 }) {
   const router = useRouter();
@@ -80,8 +85,8 @@ export function CreateProfileForm({
       proteinPerKg: watched.proteinPerKg.toString(),
       carbRatioPercent: watched.carbRatioPercent,
     },
-    weightKg: null,
-    currentBodyFat: null,
+    weightKg,
+    currentBodyFat,
   });
 
   async function onSubmit(values: ProfileFormValues) {
@@ -364,25 +369,40 @@ export function CreateProfileForm({
         </div>
 
         <div className="flex flex-col gap-1 rounded-md border p-3 text-sm">
-          <p className="font-medium">Computed from your inputs</p>
-          <p className="text-muted-foreground">
-            BMR: {preview.bmr ?? "—"} kcal/day · TDEE: {preview.tdee ?? "—"}{" "}
-            kcal/day
+          <p className="font-medium">
+            {weightKg !== null
+              ? `Targets at ${displayWeight(weightKg, weightUnit)} ${weightUnit}${
+                  currentBodyFat !== null ? `, ${currentBodyFat}% body fat` : ""
+                }`
+              : "Computed from your inputs"}
           </p>
-          <p className="text-muted-foreground">
-            Log a weight entry after creating your profile to see full macro
-            targets.
+          <p className="text-muted-foreground tabular-nums">
+            BMR {preview.bmr ?? "—"} kcal · TDEE {preview.tdee ?? "—"} kcal ·
+            Target {preview.targetCalories ?? "—"} kcal/day
           </p>
+          {preview.macros ? (
+            <p className="text-muted-foreground tabular-nums">
+              Protein {preview.macros.proteinG} g · Carbs{" "}
+              {preview.macros.carbsG} g · Fat {preview.macros.fatG} g
+            </p>
+          ) : null}
+          {weightKg === null ? (
+            <p className="text-muted-foreground">
+              Log a weight to see calorie and macro targets.
+            </p>
+          ) : currentBodyFat === null && watched.goal !== "maintain" ? (
+            <p className="text-muted-foreground">
+              Log a body fat % with a weigh-in to size the deficit or surplus
+              for your target.
+            </p>
+          ) : null}
         </div>
 
         <Button
           type="submit"
           className="mt-2"
-          disabled={
-            form.formState.isSubmitting ||
-            !form.formState.isDirty ||
-            conflict !== null
-          }
+          // The defaults are a valid profile; no edit is required to save.
+          disabled={form.formState.isSubmitting || conflict !== null}
         >
           {form.formState.isSubmitting ? "Saving..." : "Save Profile"}
         </Button>

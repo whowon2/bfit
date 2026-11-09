@@ -23,16 +23,31 @@ const importCalorieRow = z.object({
 });
 const importCalorieRows = z.array(importCalorieRow).max(MAX_IMPORT_ROWS);
 
-export async function importCalorieEntries(entries: unknown) {
+export type CalorieImportResult = {
+  imported: number;
+  updated: number;
+  skipped: number;
+};
+
+/**
+ * Upserts one row per day. `skipped` counts duplicate days in the payload
+ * (the last one wins); the client adds rows it dropped before sending.
+ */
+export async function importCalorieEntries(
+  entries: unknown,
+): Promise<CalorieImportResult> {
   const userId = await requireUserId();
   // zod strips unknown keys, so any client-supplied `userId` is dropped here.
   const parsed = importCalorieRows.parse(entries);
-  if (parsed.length === 0) return;
+  if (parsed.length === 0) return { imported: 0, updated: 0, skipped: 0 };
 
-  await db
+  // Postgres can't upsert the same target twice in one statement.
+  const byDay = new Map(parsed.map((e) => [e.date, e]));
+
+  const written = await db
     .insert(calorieLog)
     .values(
-      parsed.map((e) => ({
+      [...byDay.values()].map((e) => ({
         userId,
         date: e.date,
         actualCalories: e.actualCalories.toString(),
@@ -50,8 +65,16 @@ export async function importCalorieEntries(entries: unknown) {
         fatG: sql`excluded.fat_g`,
         updatedAt: sql`now()`,
       },
-    });
+    })
+    // xmax is 0 for a freshly inserted tuple and non-zero for an updated one.
+    .returning({ inserted: sql<boolean>`(xmax = 0)` });
 
-  revalidatePath("/profile");
   revalidatePath("/dashboard");
+  revalidatePath("/settings");
+  const imported = written.filter((r) => r.inserted).length;
+  return {
+    imported,
+    updated: written.length - imported,
+    skipped: parsed.length - byDay.size,
+  };
 }

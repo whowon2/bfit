@@ -59,9 +59,17 @@ export type AddWeightInput = z.input<typeof addInput>;
 export type UpdateWeightInput = z.input<typeof updateInput>;
 export type ImportWeightRow = z.input<typeof importWeightRow>;
 
+/** Per-day outcome of an import: new days, replaced days, dropped rows. */
+export type ImportResult = {
+  imported: number;
+  updated: number;
+  skipped: number;
+};
+
 function revalidateWeightViews() {
   revalidatePath("/dashboard");
   revalidatePath("/profile");
+  revalidatePath("/settings");
 }
 
 // Upsert semantics shared by add and import: one row per (user, day); a new
@@ -124,11 +132,17 @@ export async function removeWeightEntry(id: number) {
   revalidateWeightViews();
 }
 
-export async function importWeightEntries(rows: unknown) {
+/**
+ * Upserts imported rows per day. `skipped` counts rows collapsed into another
+ * row of the same day; the client adds the rows it dropped before sending.
+ */
+export async function importWeightEntries(
+  rows: unknown,
+): Promise<ImportResult> {
   const { userId, timeZone } = await requireUser();
   // zod strips unknown keys, so any client-supplied `userId` is dropped here.
   const parsed = importWeightRows.parse(rows);
-  if (parsed.length === 0) return;
+  if (parsed.length === 0) return { imported: 0, updated: 0, skipped: 0 };
 
   // One row per day: Postgres can't upsert the same target twice in one
   // statement, and the latest weigh-in of a day wins (as with adding).
@@ -159,7 +173,7 @@ export async function importWeightEntries(rows: unknown) {
     }
   }
 
-  await db
+  const written = await db
     .insert(weight)
     .values(
       [...byDay.entries()].map(([rowDay, r]) => ({
@@ -174,9 +188,16 @@ export async function importWeightEntries(rows: unknown) {
     .onConflictDoUpdate({
       target: [weight.userId, weight.date],
       set: upsertSet,
-    });
+    })
+    .returning({ inserted: sql<boolean>`(xmax = 0)` });
 
   revalidateWeightViews();
+  const imported = written.filter((r) => r.inserted).length;
+  return {
+    imported,
+    updated: written.length - imported,
+    skipped: parsed.length - byDay.size,
+  };
 }
 
 /**
