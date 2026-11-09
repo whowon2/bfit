@@ -12,6 +12,7 @@ import type { ChangedFields } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getProfile, getProfileHistory } from "@/lib/queries/profile";
 import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
+import { toWeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { CreateProfileForm } from "./create-form";
 import { UpdateProfileForm } from "./update-form";
@@ -127,6 +128,7 @@ export default async function ProfilePage() {
           <UpdateProfileForm
             profile={profile}
             weightKg={weightKg}
+            weightUnit={toWeightUnit(session.user.weightUnit)}
             currentBodyFat={currentBodyFat}
           />
         </CardContent>

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import WeightForm from "@/components/add-weight";
 import type { Weight } from "@/db/schema";
+import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { EditWeightButton } from "./edit-weight";
 import { ExportJsonButton } from "./export-json";
@@ -18,7 +19,7 @@ export function WeightList({
   unit,
 }: {
   weights: Weight[];
-  unit: string;
+  unit: WeightUnit;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -38,7 +39,7 @@ export function WeightList({
       count: 0,
       time: w.date.getTime(),
     };
-    group.total += parseFloat(w.value);
+    group.total += displayWeight(w.value, unit);
     group.count += 1;
     monthGroups.set(key, group);
   }
@@ -46,12 +47,18 @@ export function WeightList({
     (a, b) => a[1].time - b[1].time,
   );
   orderedMonths.forEach(([key, group], i) => {
-    const avg = group.total / group.count;
+    const avg = roundForUnit(group.total / group.count, unit);
     const prevAvg =
       i > 0
-        ? orderedMonths[i - 1][1].total / orderedMonths[i - 1][1].count
+        ? roundForUnit(
+            orderedMonths[i - 1][1].total / orderedMonths[i - 1][1].count,
+            unit,
+          )
         : null;
-    monthStats.set(key, { avg, diff: prevAvg === null ? null : avg - prevAvg });
+    monthStats.set(key, {
+      avg,
+      diff: prevAvg === null ? null : roundForUnit(avg - prevAvg, unit),
+    });
   });
 
   return (
@@ -83,7 +90,7 @@ export function WeightList({
       {!collapsed && (
         <CardContent className="flex-1 min-h-0 overflow-hidden px-2 flex flex-col">
           <div className="shrink-0">
-            <WeightForm />
+            <WeightForm unit={unit} />
             <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
               <ImportWeightsButton />
               <ExportJsonButton weights={weights} />
@@ -161,7 +168,7 @@ export function WeightList({
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">
-                          {w.value}
+                          {displayWeight(w.value, unit)}
                           <span className="text-muted-foreground ml-1 text-sm font-normal">
                             {unit}
                           </span>

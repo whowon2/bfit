@@ -30,6 +30,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { CalorieLog, Weight } from "@/db/schema";
+import { displayWeight, roundForUnit, type WeightUnit } from "@/lib/units";
 
 export const description = "A multiple line chart";
 
@@ -146,8 +147,6 @@ function mergeChartRows(
   return [...rows.values()].sort((a, b) => a.date - b.date);
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
 // One point per actual log entry, positioned on a real time scale (not a
 // category axis) — a week without a log just stretches that segment of the
 // line horizontally instead of connecting distant entries as if adjacent.
@@ -168,6 +167,7 @@ function buildDailyPoints(weights: Weight[]): DailyPoint[] {
 function buildPeriodPoints(
   weights: Weight[],
   periodStart: (date: Date) => Date,
+  unit: WeightUnit,
 ): PeriodPoint[] {
   const sorted = [...weights].sort(
     (a, b) => a.date.getTime() - b.date.getTime(),
@@ -188,18 +188,26 @@ function buildPeriodPoints(
     .sort(([a], [b]) => a - b)
     .map(([date, values]) => ({
       date,
-      value: round2(values.reduce((sum, v) => sum + v, 0) / values.length),
+      value: roundForUnit(
+        values.reduce((sum, v) => sum + v, 0) / values.length,
+        unit,
+      ),
     }));
 }
 
-function buildWeeklyPoints(weights: Weight[]): PeriodPoint[] {
-  return buildPeriodPoints(weights, (date) =>
-    startOfWeek(date, { weekStartsOn: 1 }),
+function buildWeeklyPoints(weights: Weight[], unit: WeightUnit): PeriodPoint[] {
+  return buildPeriodPoints(
+    weights,
+    (date) => startOfWeek(date, { weekStartsOn: 1 }),
+    unit,
   );
 }
 
-function buildMonthlyPoints(weights: Weight[]): PeriodPoint[] {
-  return buildPeriodPoints(weights, startOfMonth);
+function buildMonthlyPoints(
+  weights: Weight[],
+  unit: WeightUnit,
+): PeriodPoint[] {
+  return buildPeriodPoints(weights, startOfMonth, unit);
 }
 
 function buildCaloriePoints(entries: CalorieLog[]): CaloriePoint[] {
@@ -246,7 +254,7 @@ export function Chart({
 }: {
   weights: Weight[];
   calories: CalorieLog[];
-  unit: string;
+  unit: WeightUnit;
 }) {
   const [windowPreset, setWindowPreset] = useState<WindowPreset>("1Y");
   const [visibleAvgs, setVisibleAvgs] = useState<Set<Average>>(
@@ -288,9 +296,26 @@ export function Chart({
     });
   }, [windowPreset, visibleAvgs, showCalories, showBodyFat]);
 
-  const dailyData = useMemo(() => buildDailyPoints(weights), [weights]);
-  const weeklyData = useMemo(() => buildWeeklyPoints(weights), [weights]);
-  const monthlyData = useMemo(() => buildMonthlyPoints(weights), [weights]);
+  // Stored values are kg; convert once so every weight series (and the trend
+  // footer) is in the user's unit. Body fat % is unit-independent.
+  const unitWeights = useMemo(
+    () =>
+      weights.map((w) => ({
+        ...w,
+        value: String(displayWeight(w.value, unit)),
+      })),
+    [weights, unit],
+  );
+
+  const dailyData = useMemo(() => buildDailyPoints(unitWeights), [unitWeights]);
+  const weeklyData = useMemo(
+    () => buildWeeklyPoints(unitWeights, unit),
+    [unitWeights, unit],
+  );
+  const monthlyData = useMemo(
+    () => buildMonthlyPoints(unitWeights, unit),
+    [unitWeights, unit],
+  );
   const calorieData = useMemo(() => buildCaloriePoints(calories), [calories]);
   const bodyFatData = useMemo(() => buildBodyFatPoints(weights), [weights]);
 
@@ -371,10 +396,10 @@ export function Chart({
     if (visibleData.length < 2) return null;
     const first = visibleData[0].daily;
     const last = visibleData[visibleData.length - 1].daily;
-    const delta = Math.round((last - first) * 100) / 100;
+    const delta = roundForUnit(last - first, unit);
     const pct = first !== 0 ? Math.round((delta / first) * 1000) / 10 : 0;
     return { delta, pct };
-  }, [visibleData]);
+  }, [visibleData, unit]);
 
   function toggleAverage(avg: Average) {
     setVisibleAvgs((prev) => {

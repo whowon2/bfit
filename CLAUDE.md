@@ -29,7 +29,7 @@ Requires `DATABASE_URL` in `.env` (loaded via `dotenv` in `db/drizzle.ts` and `d
 - Client components never receive `userId`; there is no client-side data-fetching layer.
 
 **Auth (Better Auth)**:
-- `lib/auth.ts` — server-side Better Auth instance: Drizzle adapter (`provider: "pg"`), email/password with `autoSignIn`, `nextCookies()` plugin, and a `customSession` plugin that injects `weightUnit` onto the session's user object.
+- `lib/auth.ts` — server-side Better Auth instance: Drizzle adapter (`provider: "pg"`), email/password with `autoSignIn`, `nextCookies()` plugin, and `user.additionalFields.weightUnit` (`input: false`) so `session.user.weightUnit` reflects `user.weight_unit`. Session cookie cache is 5 min; `updateWeightUnit` re-reads the session with `disableCookieCache: true` to rewrite the cache immediately.
 - `lib/auth-client.ts` — client-side auth client (`better-auth/react`), exports the `Session` type inferred from the client.
 - `app/api/auth/[...all]/route.ts` — catch-all handler wiring Better Auth into Next's route handlers via `toNextJsHandler`.
 - `actions/auth.ts` — server actions (`signin`, `signup`, `logout`) called from form components (see `app/auth/signin/form.tsx`, `app/auth/signup/form.tsx`); these use `auth.api.signInEmail` / `signUpEmail` / `signOut` and `redirect()` on success.
@@ -38,6 +38,8 @@ Requires `DATABASE_URL` in `.env` (loaded via `dotenv` in `db/drizzle.ts` and `d
 **Database schema** (`db/schema.ts`): Better Auth's required tables (`user`, `session`, `account`, `verification`) sit alongside app tables `weight`, `userProfile`, and `calorieLog`, all foreign-keyed to `user.id` with `onDelete: "cascade"`. `weight` and other numeric fields use Drizzle `decimal` (returned as strings — callers `.toString()` values before insert and parse on read). `userProfile.goal`/`calorieLog.phase` use a shared `"cut" | "bulk" | "maintain"` union typed via `$type<>()`.
 
 **Weight actions** (`actions/weight.ts`): `addWeightEntry`, `updateWeightEntry`, `removeWeightEntry`, `importWeightEntries` — all session-scoped and zod-validated (value `0 < v < 1000`, body fat `0..100`, imports capped at 10k rows). Weight reads (`getWeightEntries`, `getLatestWeight`, `getLatestBodyFat`) are in `lib/queries/weight.ts`. Profile create/update live in `actions/profile.ts` and re-validate with `profileFormSchema`.
+
+**Weight units**: weight values are always stored in kg. `lib/units.ts` holds the only kg<->lbs conversion (`displayWeight`, `toStoredKg`, `roundForUnit`, `toWeightUnit`). Pages pass `toWeightUnit(session.user.weightUnit)` to client components, which convert for display and convert input to kg before calling actions — weight server actions accept kg only. Imports go through `lib/weight-import.ts` `parseWeightImport` (Lyfta by its `unit`, BFit export object `{ format: "bfit-weights", version, unit, weights }`, legacy plain array = kg). Nutrition math, height (cm) and body fat % are unit-independent.
 
 **Profile gating**: Both `app/dashboard/page.tsx` and `app/profile/page.tsx` check `getProfile(userId)` and render `CreateProfileForm` (`app/profile/create-form.tsx`) instead of the normal page when no profile exists yet — profile creation is a prerequisite gate rather than a separate onboarding route.
 

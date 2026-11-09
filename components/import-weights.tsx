@@ -4,7 +4,7 @@ import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { importWeightEntries } from "@/actions/weight";
-import { convertLyftaWeights, isLyftaWeightExport } from "@/lib/lyfta";
+import { parseWeightImport } from "@/lib/weight-import";
 import { Button } from "./ui/button";
 
 export function ImportWeightsButton() {
@@ -27,14 +27,8 @@ export function ImportWeightsButton() {
           const text = await file.text();
           const data = JSON.parse(text);
 
-          const weights = isLyftaWeightExport(data)
-            ? convertLyftaWeights(data)
-            : data.map((d: any) => ({
-                value: d.value,
-                date: new Date(d.date),
-                bodyFatPercent:
-                  d.bodyFatPercent != null ? String(d.bodyFatPercent) : null,
-              }));
+          // Normalized to kg from the file's declared unit.
+          const weights = parseWeightImport(data);
 
           await importWeightEntries(weights);
           router.refresh();

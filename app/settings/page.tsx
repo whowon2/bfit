@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { WeightUnitSelect } from "@/components/weight-unit-select";
 import { auth } from "@/lib/auth";
+import { toWeightUnit } from "@/lib/units";
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({
@@ -20,7 +21,7 @@ export default async function SettingsPage() {
     redirect("/auth/signin");
   }
 
-  const weightUnit = session.user.weightUnit === "lbs" ? "lbs" : "kg";
+  const weightUnit = toWeightUnit(session.user.weightUnit);
 
   return (
     <div className="container flex flex-col gap-6 p-4 w-full max-w-5xl mx-auto">

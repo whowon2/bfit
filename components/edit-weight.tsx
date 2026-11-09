@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Weight } from "@/db/schema";
+import { displayWeight, toStoredKg, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 export function EditWeightButton({
@@ -29,10 +30,12 @@ export function EditWeightButton({
   unit,
 }: {
   weight: Weight;
-  unit: string;
+  unit: WeightUnit;
 }) {
+  // The dialog edits in the user's unit; stored values are kg.
+  const initialValue = String(displayWeight(weight.value, unit));
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(weight.value);
+  const [value, setValue] = useState(initialValue);
   const [bodyFatPercent, setBodyFatPercent] = useState(
     weight.bodyFatPercent ?? "",
   );
@@ -42,8 +45,14 @@ export function EditWeightButton({
   const router = useRouter();
 
   function handleSave() {
-    const newValue = Number(value);
-    if (Number.isNaN(newValue)) return;
+    const parsedValue = Number(value);
+    if (Number.isNaN(parsedValue)) return;
+    // Unchanged field: keep the exact stored kg instead of re-converting the
+    // rounded display value (avoids lbs round-trip drift).
+    const newValue =
+      value === initialValue
+        ? Number(weight.value)
+        : toStoredKg(parsedValue, unit);
 
     const newBodyFatPercent =
       bodyFatPercent === "" ? null : Number(bodyFatPercent);
@@ -74,7 +83,7 @@ export function EditWeightButton({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setValue(weight.value);
+          setValue(initialValue);
           setBodyFatPercent(weight.bodyFatPercent ?? "");
           setDate(weight.date);
           setTime(format(weight.date, "HH:mm"));

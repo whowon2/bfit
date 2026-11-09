@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getCalorieEntries } from "@/lib/queries/calorie";
 import { getProfile } from "@/lib/queries/profile";
 import { getWeightEntries } from "@/lib/queries/weight";
+import { toWeightUnit } from "@/lib/units";
 import { CreateProfileForm } from "../profile/create-form";
 
 export default async function DashboardPage() {
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
     redirect("/auth/signin");
   }
 
-  const unit = session.user.weightUnit === "lbs" ? "lbs" : "kg";
+  const unit = toWeightUnit(session.user.weightUnit);
 
   const weights = await getWeightEntries(session.user.id);
   const calories = await getCalorieEntries(session.user.id);

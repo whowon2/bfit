@@ -38,15 +38,18 @@ import {
   type ProfileFormValues,
   profileFormSchema,
 } from "@/lib/profile-schema";
+import { displayWeight, type WeightUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 export function UpdateProfileForm({
   profile,
   weightKg,
+  weightUnit,
   currentBodyFat,
 }: {
   profile: Profile;
   weightKg: number | null;
+  weightUnit: WeightUnit;
   currentBodyFat: number | null;
 }) {
   const router = useRouter();
@@ -375,7 +378,9 @@ export function UpdateProfileForm({
               </p>
               <p className="text-muted-foreground text-xs">
                 Based on{" "}
-                {weightKg !== null ? `${weightKg} kg` : "no weight logged"}
+                {weightKg !== null
+                  ? `${displayWeight(weightKg, weightUnit)} ${weightUnit}`
+                  : "no weight logged"}
                 {currentBodyFat !== null
                   ? ` · ${currentBodyFat}% body fat`
                   : ""}

@@ -11,10 +11,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { toStoredKg, type WeightUnit } from "@/lib/units";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-export default function WeightForm() {
+export default function WeightForm({ unit }: { unit: WeightUnit }) {
   const [date, setDate] = React.useState<Date>();
   const [time, setTime] = React.useState<string>("");
   const [isPending, startTransition] = useTransition();
@@ -25,7 +26,8 @@ export default function WeightForm() {
     <form
       ref={formRef}
       action={(formData) => {
-        const value = Number(formData.get("value"));
+        // Input is in the user's unit; server actions take kg.
+        const value = toStoredKg(Number(formData.get("value")), unit);
         const bodyFatRaw = formData.get("bodyFatPercent");
         const bodyFatPercent =
           bodyFatRaw && bodyFatRaw !== "" ? Number(bodyFatRaw) : undefined;
@@ -48,7 +50,7 @@ export default function WeightForm() {
         type="number"
         name="value"
         step={0.01}
-        placeholder="Enter weight"
+        placeholder={`Enter weight (${unit})`}
         required
         className=""
       />
