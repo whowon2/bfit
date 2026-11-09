@@ -1,11 +1,5 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  getLatestBodyFat,
-  getLatestWeight,
-  getProfile,
-  getProfileHistory,
-} from "@/actions/weight";
 import { ImportNutritionButton } from "@/components/import-nutrition";
 import {
   Card,
@@ -16,6 +10,8 @@ import {
 } from "@/components/ui/card";
 import type { ChangedFields } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { getProfile, getProfileHistory } from "@/lib/queries/profile";
+import { getLatestBodyFat, getLatestWeight } from "@/lib/queries/weight";
 import { cn } from "@/lib/utils";
 import { CreateProfileForm } from "./create-form";
 import { UpdateProfileForm } from "./update-form";
@@ -107,7 +103,7 @@ export default async function ProfilePage() {
   const profile = await getProfile(session.user.id);
 
   if (!profile) {
-    return <CreateProfileForm session={session} />;
+    return <CreateProfileForm />;
   }
 
   const latestWeight = await getLatestWeight(session.user.id);
@@ -129,7 +125,6 @@ export default async function ProfilePage() {
       <Card className="w-full">
         <CardContent>
           <UpdateProfileForm
-            session={session}
             profile={profile}
             weightKg={weightKg}
             currentBodyFat={currentBodyFat}
@@ -145,7 +140,7 @@ export default async function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ImportNutritionButton session={session} />
+          <ImportNutritionButton />
         </CardContent>
       </Card>
 

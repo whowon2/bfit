@@ -23,11 +23,9 @@ export function isLyftaWeightExport(data: unknown): data is LyftaWeightExport {
 
 export function convertLyftaWeights(
   lyfta: LyftaWeightExport,
-  userId: string,
-): { value: string; date: Date; userId: string }[] {
+): { value: string; date: Date }[] {
   return lyfta.data.dates.map((date, i) => ({
     value: lyfta.data.measures[i],
     date: new Date(date),
-    userId,
   }));
 }

@@ -4,11 +4,10 @@ import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { importCalorieEntries } from "@/actions/calorie";
-import type { Session } from "@/lib/auth-client";
 import { isMfpNutritionExport, parseMfpNutritionCsv } from "@/lib/mfp";
 import { Button } from "./ui/button";
 
-export function ImportNutritionButton({ session }: { session: Session }) {
+export function ImportNutritionButton() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -35,9 +34,7 @@ export function ImportNutritionButton({ session }: { session: Session }) {
           }
 
           const days = parseMfpNutritionCsv(text);
-          await importCalorieEntries(
-            days.map((d) => ({ ...d, userId: session.user.id })),
-          );
+          await importCalorieEntries(days);
           router.refresh();
         } catch (err) {
           console.error("Invalid nutrition CSV file", err);

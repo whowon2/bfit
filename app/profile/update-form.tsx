@@ -6,7 +6,7 @@ import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { updateProfile } from "@/actions/weight";
+import { updateProfile } from "@/actions/profile";
 import { FieldInfo } from "@/components/field-info";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import type { Profile } from "@/db/schema";
-import type { Session } from "@/lib/auth-client";
 import { computeCalcSnapshot } from "@/lib/nutrition";
 import {
   type ProfileFormValues,
@@ -42,12 +41,10 @@ import {
 import { cn } from "@/lib/utils";
 
 export function UpdateProfileForm({
-  session,
   profile,
   weightKg,
   currentBodyFat,
 }: {
-  session: Session;
   profile: Profile;
   weightKg: number | null;
   currentBodyFat: number | null;
@@ -95,7 +92,7 @@ export function UpdateProfileForm({
 
   async function onSubmit(values: ProfileFormValues) {
     try {
-      await updateProfile(session.user.id, values);
+      await updateProfile(values);
       toast.success("Profile saved.");
       form.reset(values);
       router.refresh();

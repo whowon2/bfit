@@ -6,7 +6,7 @@ import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { createProfile } from "@/actions/weight";
+import { createProfile } from "@/actions/profile";
 import { FieldInfo } from "@/components/field-info";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,7 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import type { Session } from "@/lib/auth-client";
 import { computeCalcSnapshot } from "@/lib/nutrition";
 import {
   type ProfileFormValues,
@@ -40,7 +39,7 @@ import {
 } from "@/lib/profile-schema";
 import { cn } from "@/lib/utils";
 
-export function CreateProfileForm({ session }: { session: Session }) {
+export function CreateProfileForm() {
   const router = useRouter();
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema) as Resolver<ProfileFormValues>,
@@ -78,7 +77,7 @@ export function CreateProfileForm({ session }: { session: Session }) {
 
   async function onSubmit(values: ProfileFormValues) {
     try {
-      await createProfile(session.user.id, values);
+      await createProfile(values);
       toast.success("Profile saved.");
       router.refresh();
     } catch {

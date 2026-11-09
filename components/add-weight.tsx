@@ -14,7 +14,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-export default function WeightForm({ userId }: { userId: string }) {
+export default function WeightForm() {
   const [date, setDate] = React.useState<Date>();
   const [time, setTime] = React.useState<string>("");
   const [isPending, startTransition] = useTransition();
@@ -35,7 +35,7 @@ export default function WeightForm({ userId }: { userId: string }) {
           entryDate.setHours(hours, minutes, 0, 0);
         }
         startTransition(async () => {
-          await addWeightEntry(userId, value, entryDate, bodyFatPercent);
+          await addWeightEntry(value, entryDate, bodyFatPercent);
           formRef.current?.reset();
           setDate(undefined);
           setTime("");

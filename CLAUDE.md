@@ -23,18 +23,21 @@ Requires `DATABASE_URL` in `.env` (loaded via `dotenv` in `db/drizzle.ts` and `d
 
 ## Architecture
 
-**Data flow**: Server Components fetch data directly via functions in `actions/*.ts` (marked `"use server"`), which query Drizzle (`db/drizzle.ts`) against tables in `db/schema.ts`. Page components (e.g. `app/dashboard/page.tsx`) call `auth.api.getSession()` to get the session, then pass `userId`/`session` down to client components as props — there is no client-side data-fetching layer.
+**Data flow**: Reads and writes are split.
+- **Reads** live in `lib/queries/*.ts` (`weight.ts`, `profile.ts`, `calorie.ts`), guarded by `import "server-only"`. Server Components (e.g. `app/dashboard/page.tsx`) call `auth.api.getSession()`, then pass `session.user.id` into these query functions. Never put read helpers in a `"use server"` file — every export there is a public POST endpoint.
+- **Writes** are server actions in `actions/*.ts` (`"use server"`): `weight.ts`, `profile.ts`, `calorie.ts`, `settings.ts`, `auth.ts`. Every action derives the user via `requireUserId()` from `lib/session.ts` (throws `Unauthorized` without a session) and MUST NOT accept a `userId` argument. Updates/deletes filter by both row id AND session userId; inputs are validated with zod server side (import rows are re-parsed, unknown keys such as `userId` stripped, and stamped with the session user). Actions call `revalidatePath(...)`; client components also call `router.refresh()`.
+- Client components never receive `userId`; there is no client-side data-fetching layer.
 
 **Auth (Better Auth)**:
 - `lib/auth.ts` — server-side Better Auth instance: Drizzle adapter (`provider: "pg"`), email/password with `autoSignIn`, `nextCookies()` plugin, and a `customSession` plugin that injects `weightUnit` onto the session's user object.
 - `lib/auth-client.ts` — client-side auth client (`better-auth/react`), exports the `Session` type inferred from the client.
 - `app/api/auth/[...all]/route.ts` — catch-all handler wiring Better Auth into Next's route handlers via `toNextJsHandler`.
 - `actions/auth.ts` — server actions (`signin`, `signup`, `logout`) called from form components (see `app/auth/signin/form.tsx`, `app/auth/signup/form.tsx`); these use `auth.api.signInEmail` / `signUpEmail` / `signOut` and `redirect()` on success.
-- `proxy.ts` — optimistic redirect to `/auth/signin` for `/dashboard` based on the presence of a session cookie only (explicitly NOT a real auth check — real checks happen per-page via `auth.api.getSession()`). Next 16 renamed the `middleware.ts` convention to `proxy.ts` (export named `proxy`, same behavior).
+- `proxy.ts` — optimistic redirect to `/auth/signin` for `/dashboard`, `/profile` and `/settings` based on the presence of a session cookie only (explicitly NOT a real auth check — real checks happen per-page via `auth.api.getSession()` and per-action via `requireUserId()`). Next 16 renamed the `middleware.ts` convention to `proxy.ts` (export named `proxy`, same behavior).
 
 **Database schema** (`db/schema.ts`): Better Auth's required tables (`user`, `session`, `account`, `verification`) sit alongside app tables `weight`, `userProfile`, and `calorieLog`, all foreign-keyed to `user.id` with `onDelete: "cascade"`. `weight` and other numeric fields use Drizzle `decimal` (returned as strings — callers `.toString()` values before insert and parse on read). `userProfile.goal`/`calorieLog.phase` use a shared `"cut" | "bulk" | "maintain"` union typed via `$type<>()`.
 
-**Weight actions** (`actions/weight.ts`): CRUD plus aggregate queries (`getWeeklyAverages` via `DATE_TRUNC`, `getTodayWeight` via `DATE(...) = CURRENT_DATE`) using raw `sql` template fragments for Postgres-specific logic. Mutations call `revalidateTag("weights")`.
+**Weight actions** (`actions/weight.ts`): `addWeightEntry`, `updateWeightEntry`, `removeWeightEntry`, `importWeightEntries` — all session-scoped and zod-validated (value `0 < v < 1000`, body fat `0..100`, imports capped at 10k rows). Weight reads (`getWeightEntries`, `getLatestWeight`, `getLatestBodyFat`) are in `lib/queries/weight.ts`. Profile create/update live in `actions/profile.ts` and re-validate with `profileFormSchema`.
 
 **Profile gating**: Both `app/dashboard/page.tsx` and `app/profile/page.tsx` check `getProfile(userId)` and render `CreateProfileForm` (`app/profile/create-form.tsx`) instead of the normal page when no profile exists yet — profile creation is a prerequisite gate rather than a separate onboarding route.
 

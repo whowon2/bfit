@@ -26,11 +26,9 @@ import { cn } from "@/lib/utils";
 
 export function EditWeightButton({
   weight,
-  userId,
   unit,
 }: {
   weight: Weight;
-  userId: string;
   unit: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -60,7 +58,6 @@ export function EditWeightButton({
     startTransition(async () => {
       await updateWeightEntry(
         weight.id,
-        userId,
         newValue,
         entryDate,
         newBodyFatPercent,

@@ -12,13 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function WeightUnitSelect({
-  userId,
-  weightUnit,
-}: {
-  userId: string;
-  weightUnit: "kg" | "lbs";
-}) {
+export function WeightUnitSelect({ weightUnit }: { weightUnit: "kg" | "lbs" }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -26,7 +20,7 @@ export function WeightUnitSelect({
     const unit = value as "kg" | "lbs";
     startTransition(async () => {
       try {
-        await updateWeightUnit(userId, unit);
+        await updateWeightUnit(unit);
         toast.success("Weight unit updated.");
         router.refresh();
       } catch {

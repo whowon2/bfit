@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import WeightForm from "@/components/add-weight";
 import type { Weight } from "@/db/schema";
-import type { Session } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { EditWeightButton } from "./edit-weight";
 import { ExportJsonButton } from "./export-json";
@@ -17,13 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 export function WeightList({
   weights,
   unit,
-  userId,
-  session,
 }: {
   weights: Weight[];
   unit: string;
-  userId: string;
-  session: Session;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -88,9 +83,9 @@ export function WeightList({
       {!collapsed && (
         <CardContent className="flex-1 min-h-0 overflow-hidden px-2 flex flex-col">
           <div className="shrink-0">
-            <WeightForm userId={userId} />
+            <WeightForm />
             <div className="flex w-full max-w-sm mt-2 items-center gap-2 pb-3">
-              <ImportWeightsButton session={session} />
+              <ImportWeightsButton />
               <ExportJsonButton weights={weights} />
             </div>
           </div>
@@ -181,11 +176,7 @@ export function WeightList({
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <EditWeightButton
-                          weight={w}
-                          userId={userId}
-                          unit={unit}
-                        />
+                        <EditWeightButton weight={w} unit={unit} />
                         <RemoveWeightButton weightId={w.id} />
                       </div>
                     </motion.div>

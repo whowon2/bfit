@@ -15,5 +15,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard"], // Specify the routes the proxy applies to
+  matcher: ["/dashboard", "/profile", "/settings"], // Specify the routes the proxy applies to
 };

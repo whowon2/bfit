@@ -4,11 +4,10 @@ import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { importWeightEntries } from "@/actions/weight";
-import type { Session } from "@/lib/auth-client";
 import { convertLyftaWeights, isLyftaWeightExport } from "@/lib/lyfta";
 import { Button } from "./ui/button";
 
-export function ImportWeightsButton({ session }: { session: Session }) {
+export function ImportWeightsButton() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -29,11 +28,10 @@ export function ImportWeightsButton({ session }: { session: Session }) {
           const data = JSON.parse(text);
 
           const weights = isLyftaWeightExport(data)
-            ? convertLyftaWeights(data, session.user.id)
+            ? convertLyftaWeights(data)
             : data.map((d: any) => ({
                 value: d.value,
                 date: new Date(d.date),
-                userId: session.user.id,
                 bodyFatPercent:
                   d.bodyFatPercent != null ? String(d.bodyFatPercent) : null,
               }));

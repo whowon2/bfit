@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getCalorieEntries } from "@/actions/calorie";
-import { getProfile, getWeightEntries } from "@/actions/weight";
 import { Chart } from "@/components/progress-chart";
 import { WeightList } from "@/components/weight-list";
 import { auth } from "@/lib/auth";
+import { getCalorieEntries } from "@/lib/queries/calorie";
+import { getProfile } from "@/lib/queries/profile";
+import { getWeightEntries } from "@/lib/queries/weight";
 import { CreateProfileForm } from "../profile/create-form";
 
 export default async function DashboardPage() {
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
   const profile = await getProfile(session.user.id);
 
   if (!profile) {
-    return <CreateProfileForm session={session} />;
+    return <CreateProfileForm />;
   }
 
   return (
@@ -32,12 +33,7 @@ export default async function DashboardPage() {
       <div className="flex gap-4 flex-col w-full lg:flex-row justify-stretch items-stretch lg:h-[calc(100vh-2rem)]">
         <Chart weights={weights} calories={calories} unit={unit} />
 
-        <WeightList
-          weights={weights}
-          unit={unit}
-          userId={session.user.id}
-          session={session}
-        />
+        <WeightList weights={weights} unit={unit} />
       </div>
     </div>
   );

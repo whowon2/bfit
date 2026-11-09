@@ -44,10 +44,7 @@ export default async function SettingsPage() {
                 Used across weight logging and charts.
               </p>
             </div>
-            <WeightUnitSelect
-              userId={session.user.id}
-              weightUnit={weightUnit}
-            />
+            <WeightUnitSelect weightUnit={weightUnit} />
           </div>
 
           <div className="flex items-center justify-between">
